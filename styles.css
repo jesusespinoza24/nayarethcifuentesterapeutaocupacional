@@ -87,6 +87,7 @@ a { color: inherit; }
 .btn-whatsapp:hover { background: #1ebd5a; transform: translateY(-2px); }
 
 .full-width { width: 100%; }
+.contact-info .btn + .btn { margin-top: 14px; }
 
 /* Header */
 .site-header {
