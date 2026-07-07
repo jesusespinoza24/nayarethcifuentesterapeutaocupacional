@@ -354,6 +354,31 @@ a { color: inherit; }
 }
 .card h3 { margin: 0 0 8px; font-size: 1.05rem; color: var(--ink); }
 .card p { margin: 0; color: var(--ink-soft); font-size: 0.92rem; }
+.card-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.card-list li {
+  position: relative;
+  padding-left: 16px;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+.card-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+}
 
 /* Coverage */
 .coverage-inner {
