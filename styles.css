@@ -521,3 +521,25 @@ a { color: inherit; }
   .footer-inner { flex-direction: column; text-align: center; }
   .footer-inner > div:first-child { flex-direction: column; }
 }
+
+.whatsapp-float {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 60px;
+  height: 60px;
+  background: #25d366;
+  color: var(--white);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+  z-index: 100;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.whatsapp-float:hover { background: #1ebd5a; transform: scale(1.08); }
+
+@media (max-width: 600px) {
+  .whatsapp-float { width: 52px; height: 52px; right: 16px; bottom: 16px; }
+}
