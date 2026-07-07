@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agenda tu hora | Nayareth Cifuentes - Terapeuta Ocupacional</title>
+<meta name="description" content="Agenda tu hora de atención domiciliaria de Terapia Ocupacional en Valdivia o La Unión.">
+<meta name="theme-color" content="#2f9e82">
+<meta name="format-detection" content="telephone=no">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="index.html#inicio" class="logo">
+      <span class="logo-mark">NC</span>
+      <span class="logo-text">Nayareth Cifuentes<br><small>Terapeuta Ocupacional</small></span>
+    </a>
+
+    <button class="nav-toggle" id="navToggle" aria-label="Abrir menú" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+
+    <nav class="nav" id="siteNav">
+      <a href="index.html#inicio">Inicio</a>
+      <a href="index.html#sobre-mi">Sobre mí</a>
+      <a href="index.html#areas-intervencion">Áreas de intervención</a>
+      <a href="index.html#cobertura">Cobertura</a>
+      <a href="index.html#contacto">Contacto</a>
+      <a href="agenda.html" class="btn btn-primary nav-cta">Agenda tu hora</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="section" style="padding-bottom: 0;">
+    <div class="container page-hero">
+      <p class="eyebrow center">Agendamiento</p>
+      <h1>Agenda tu hora de atención domiciliaria</h1>
+      <p>Elige la ciudad y la hora que más te acomode. Recibirás la confirmación y coordinaremos la dirección exacta por WhatsApp.</p>
+
+      <div class="tabs" id="cityTabs">
+        <button class="tab-btn active" data-city="valdivia" type="button">Valdivia</button>
+        <button class="tab-btn" data-city="la_union" type="button">La Unión</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div id="slotsContainer">
+        <p class="empty-state">Cargando horarios disponibles…</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div>
+      <span class="logo-mark small">NC</span>
+      <div>
+        <strong>Nayareth Cifuentes Fuchslocher</strong>
+        <p>Terapeuta Ocupacional · Valdivia y La Unión, Chile</p>
+      </div>
+    </div>
+    <p class="copy">&copy; <span id="year"></span> Nayareth Cifuentes. Todos los derechos reservados.</p>
+  </div>
+</footer>
+
+<a href="https://wa.me/56900000000" target="_blank" rel="noopener" class="whatsapp-float" aria-label="Escribir por WhatsApp">
+  <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.472-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.15-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.372-.01-.571-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12.004 2c-5.514 0-9.997 4.483-9.997 9.997 0 1.762.464 3.484 1.346 4.997L2 22l5.13-1.345a9.965 9.965 0 0 0 4.874 1.242h.004c5.514 0 9.997-4.483 9.997-9.997C21.997 6.483 17.518 2 12.004 2zm0 18.15h-.003a8.16 8.16 0 0 1-4.157-1.137l-.298-.177-3.044.799.812-2.968-.194-.305a8.14 8.14 0 0 1-1.253-4.365c0-4.502 3.665-8.166 8.171-8.166 2.183 0 4.234.85 5.777 2.394a8.115 8.115 0 0 1 2.39 5.782c-.002 4.502-3.667 8.166-8.201 8.166z"/></svg>
+</a>
+
+<div class="booking-modal-backdrop" id="bookingModal" style="display: none;">
+  <div class="booking-modal">
+    <h3>Confirma tu hora</h3>
+    <p id="modalSlotSummary" style="color: var(--ink-soft); margin-top: -8px;"></p>
+    <form id="bookingForm">
+      <label style="display:flex; flex-direction:column; gap:6px; font-weight:700; margin-bottom:14px;">
+        Nombre
+        <input type="text" name="nombre" required placeholder="Tu nombre" style="font-family:var(--font-body); font-size:16px; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--bg);">
+      </label>
+      <label style="display:flex; flex-direction:column; gap:6px; font-weight:700; margin-bottom:14px;">
+        Teléfono
+        <input type="tel" name="telefono" required placeholder="+56 9 ...." style="font-family:var(--font-body); font-size:16px; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--bg);">
+      </label>
+      <label style="display:flex; flex-direction:column; gap:6px; font-weight:700; margin-bottom:14px;">
+        Comuna
+        <input type="text" name="comuna" required placeholder="Tu comuna" style="font-family:var(--font-body); font-size:16px; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--bg);">
+      </label>
+      <label style="display:flex; flex-direction:column; gap:6px; font-weight:700; margin-bottom:14px;">
+        Motivo de consulta (opcional)
+        <textarea name="motivo" rows="3" placeholder="Cuéntame brevemente qué necesitas..." style="font-family:var(--font-body); font-size:16px; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--bg); resize:vertical;"></textarea>
+      </label>
+      <div style="display:flex; gap:10px;">
+        <button type="button" class="btn btn-small" id="modalCancel" style="flex:1; padding:14px;">Cancelar</button>
+        <button type="submit" class="btn btn-primary" style="flex:2;">Confirmar hora</button>
+      </div>
+      <p class="form-note" id="modalNote"></p>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="script.js"></script>
+<script src="js/agenda.js"></script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de administración | Nayareth Cifuentes</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="index.html#inicio" class="logo">
+      <span class="logo-mark">NC</span>
+      <span class="logo-text">Nayareth Cifuentes<br><small>Panel de administración</small></span>
+    </a>
+    <button class="btn btn-small" id="logoutBtn" style="display:none;">Cerrar sesión</button>
+  </div>
+</header>
+
+<main>
+  <div class="container" style="padding: 40px 24px;">
+
+    <div class="admin-login" id="loginBox">
+      <h2>Iniciar sesión</h2>
+      <form id="loginForm">
+        <label style="display:flex; flex-direction:column; gap:6px; font-weight:700; margin-bottom:14px;">
+          Correo
+          <input type="email" name="email" required style="font-family:var(--font-body); font-size:16px; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--bg);">
+        </label>
+        <label style="display:flex; flex-direction:column; gap:6px; font-weight:700; margin-bottom:14px;">
+          Contraseña
+          <input type="password" name="password" required style="font-family:var(--font-body); font-size:16px; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--bg);">
+        </label>
+        <button type="submit" class="btn btn-primary full-width">Entrar</button>
+        <p class="form-note error" id="loginNote"></p>
+      </form>
+    </div>
+
+    <div class="admin-panel" id="adminPanel">
+
+      <section class="admin-section">
+        <h2>Crear horario</h2>
+        <form id="slotForm">
+          <div class="admin-form-row">
+            <label>
+              Ciudad
+              <select name="city" required>
+                <option value="valdivia">Valdivia</option>
+                <option value="la_union">La Unión</option>
+              </select>
+            </label>
+            <label>
+              Fecha
+              <input type="date" name="slot_date" required>
+            </label>
+            <label>
+              Hora inicio
+              <input type="time" name="start_time" required>
+            </label>
+            <label>
+              Hora fin
+              <input type="time" name="end_time" required>
+            </label>
+            <button type="submit" class="btn btn-primary">Agregar</button>
+          </div>
+          <p class="form-note error" id="slotFormNote"></p>
+        </form>
+      </section>
+
+      <section class="admin-section">
+        <h2>Horarios próximos</h2>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="slotsTable">
+            <thead>
+              <tr><th>Ciudad</th><th>Fecha</th><th>Hora</th><th>Estado</th><th></th></tr>
+            </thead>
+            <tbody id="slotsTableBody">
+              <tr><td colspan="5">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="admin-section">
+        <h2>Reservas</h2>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="bookingsTable">
+            <thead>
+              <tr><th>Fecha</th><th>Ciudad</th><th>Nombre</th><th>Teléfono</th><th>Comuna</th><th>Motivo</th></tr>
+            </thead>
+            <tbody id="bookingsTableBody">
+              <tr><td colspan="6">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
