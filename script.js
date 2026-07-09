@@ -27,3 +27,19 @@ if (form && formNote) {
     formNote.textContent = 'Este formulario aún no está conectado a un correo o WhatsApp. Por ahora usa el botón de WhatsApp para contactarte.';
   });
 }
+
+const revealEls = document.querySelectorAll('.reveal');
+if (revealEls.length && 'IntersectionObserver' in window) {
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('revealed');
+        revealObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+  revealEls.forEach(el => revealObserver.observe(el));
+} else {
+  revealEls.forEach(el => el.classList.add('revealed'));
+}

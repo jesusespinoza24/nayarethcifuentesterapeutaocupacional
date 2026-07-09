@@ -727,3 +727,61 @@ a { color: inherit; }
   .admin-form-row { grid-template-columns: 1fr; }
   .booking-modal { padding: 24px; }
 }
+
+/* ── Próxima hora disponible (inicio) ───────────────────────────────── */
+.next-slot-teaser {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 10px 18px;
+  margin-top: 22px;
+  text-decoration: none;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.9rem;
+  box-shadow: var(--shadow);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.next-slot-teaser:hover { transform: translateY(-2px); border-color: var(--green); }
+.next-slot-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}
+.next-slot-arrow { color: var(--green-dark); }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(47, 158, 130, 0.4); }
+  50% { opacity: 0.7; box-shadow: 0 0 0 5px rgba(47, 158, 130, 0); }
+}
+
+@media (max-width: 600px) {
+  .next-slot-teaser { font-size: 0.82rem; padding: 10px 14px; white-space: normal; }
+}
+
+/* ── Animaciones al hacer scroll ─────────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+}
+
+.cards-grid .card.reveal:nth-child(1) { transition-delay: 0s; }
+.cards-grid .card.reveal:nth-child(2) { transition-delay: 0.08s; }
+.cards-grid .card.reveal:nth-child(3) { transition-delay: 0.16s; }
+.cards-grid .card.reveal:nth-child(4) { transition-delay: 0.24s; }
+.cards-grid .card.reveal:nth-child(5) { transition-delay: 0.32s; }
+.cards-grid .card.reveal:nth-child(6) { transition-delay: 0.4s; }
