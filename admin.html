@@ -43,7 +43,7 @@
     <div class="admin-panel" id="adminPanel">
 
       <section class="admin-section">
-        <h2>Crear horario</h2>
+        <h2>Crear horario individual</h2>
         <form id="slotForm">
           <div class="admin-form-row">
             <label>
@@ -68,6 +68,64 @@
             <button type="submit" class="btn btn-primary">Agregar</button>
           </div>
           <p class="form-note error" id="slotFormNote"></p>
+        </form>
+      </section>
+
+      <section class="admin-section">
+        <h2>Crear horarios recurrentes</h2>
+        <p style="color: var(--ink-soft); margin-top: -8px;">
+          Genera automáticamente varios horarios repetidos en un rango de fechas, divididos en bloques de la duración que elijas.
+        </p>
+        <form id="recurringForm">
+          <div class="admin-form-row">
+            <label>
+              Ciudad
+              <select name="city" required>
+                <option value="valdivia">Valdivia</option>
+                <option value="la_union">La Unión</option>
+              </select>
+            </label>
+            <label>
+              Desde
+              <input type="date" name="from_date" required>
+            </label>
+            <label>
+              Hasta
+              <input type="date" name="to_date" required>
+            </label>
+          </div>
+          <div class="admin-form-row">
+            <label>
+              Hora inicio del día
+              <input type="time" name="start_time" required>
+            </label>
+            <label>
+              Hora fin del día
+              <input type="time" name="end_time" required>
+            </label>
+            <label>
+              Duración por cita
+              <select name="duration" required>
+                <option value="30">30 min</option>
+                <option value="45">45 min</option>
+                <option value="60" selected>60 min</option>
+                <option value="90">90 min</option>
+                <option value="120">120 min</option>
+              </select>
+            </label>
+          </div>
+          <label style="display:block; font-weight:700; font-size:0.85rem; margin-bottom:8px;">Días de la semana</label>
+          <div class="weekday-picker">
+            <label><input type="checkbox" name="weekday" value="1"><span>L</span></label>
+            <label><input type="checkbox" name="weekday" value="2"><span>M</span></label>
+            <label><input type="checkbox" name="weekday" value="3"><span>M</span></label>
+            <label><input type="checkbox" name="weekday" value="4"><span>J</span></label>
+            <label><input type="checkbox" name="weekday" value="5"><span>V</span></label>
+            <label><input type="checkbox" name="weekday" value="6"><span>S</span></label>
+            <label><input type="checkbox" name="weekday" value="0"><span>D</span></label>
+          </div>
+          <button type="submit" class="btn btn-primary" style="margin-top:16px;">Generar horarios</button>
+          <p class="form-note" id="recurringFormNote"></p>
         </form>
       </section>
 

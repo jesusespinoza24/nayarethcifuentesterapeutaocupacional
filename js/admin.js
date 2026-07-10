@@ -8,6 +8,8 @@ const loginForm = document.getElementById('loginForm');
 const loginNote = document.getElementById('loginNote');
 const slotForm = document.getElementById('slotForm');
 const slotFormNote = document.getElementById('slotFormNote');
+const recurringForm = document.getElementById('recurringForm');
+const recurringFormNote = document.getElementById('recurringFormNote');
 const slotsTableBody = document.getElementById('slotsTableBody');
 const bookingsTableBody = document.getElementById('bookingsTableBody');
 
@@ -75,6 +77,103 @@ slotForm.addEventListener('submit', async (e) => {
   }
 
   slotForm.reset();
+  await loadSlots();
+});
+
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function buildRecurringSlots({ city, fromDate, toDate, weekdays, startTime, endTime, duration }) {
+  const slots = [];
+  const [sh, sm] = startTime.split(':').map(Number);
+  const [eh, em] = endTime.split(':').map(Number);
+  const dayStartMin = sh * 60 + sm;
+  const dayEndMin = eh * 60 + em;
+
+  const cursor = new Date(fromDate + 'T00:00:00Z');
+  const end = new Date(toDate + 'T00:00:00Z');
+
+  while (cursor <= end) {
+    if (weekdays.includes(cursor.getUTCDay())) {
+      const dateStr = cursor.toISOString().slice(0, 10);
+      for (let t = dayStartMin; t + duration <= dayEndMin; t += duration) {
+        const bStart = `${pad2(Math.floor(t / 60))}:${pad2(t % 60)}`;
+        const bEnd = `${pad2(Math.floor((t + duration) / 60))}:${pad2((t + duration) % 60)}`;
+        slots.push({ city, slot_date: dateStr, start_time: bStart, end_time: bEnd });
+      }
+    }
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return slots;
+}
+
+recurringForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  recurringFormNote.textContent = '';
+  recurringFormNote.className = 'form-note';
+
+  const formData = new FormData(recurringForm);
+  const fromDate = formData.get('from_date');
+  const toDate = formData.get('to_date');
+  const weekdays = formData.getAll('weekday').map(Number);
+  const duration = parseInt(formData.get('duration'), 10);
+
+  if (weekdays.length === 0) {
+    recurringFormNote.textContent = 'Selecciona al menos un día de la semana.';
+    recurringFormNote.className = 'form-note error';
+    return;
+  }
+
+  if (toDate < fromDate) {
+    recurringFormNote.textContent = 'La fecha "Hasta" debe ser posterior a "Desde".';
+    recurringFormNote.className = 'form-note error';
+    return;
+  }
+
+  const daysInRange = (new Date(toDate) - new Date(fromDate)) / 86400000;
+  if (daysInRange > 90) {
+    recurringFormNote.textContent = 'El rango es muy grande (máximo 90 días). Achícalo e inténtalo de nuevo.';
+    recurringFormNote.className = 'form-note error';
+    return;
+  }
+
+  const newSlots = buildRecurringSlots({
+    city: formData.get('city'),
+    fromDate,
+    toDate,
+    weekdays,
+    startTime: formData.get('start_time'),
+    endTime: formData.get('end_time'),
+    duration
+  });
+
+  if (newSlots.length === 0) {
+    recurringFormNote.textContent = 'No se generó ningún horario. Revisa que la hora de fin sea mayor que la de inicio.';
+    recurringFormNote.className = 'form-note error';
+    return;
+  }
+
+  const submitBtn = recurringForm.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  recurringFormNote.textContent = `Creando ${newSlots.length} horarios...`;
+
+  const { error } = await db.from('slots').insert(newSlots);
+  submitBtn.disabled = false;
+
+  if (error) {
+    recurringFormNote.textContent = error.message.includes('unique_slot')
+      ? 'Algunos de esos horarios ya existían (fecha/hora repetida), así que no se creó ninguno. Revisa la tabla de horarios de abajo.'
+      : error.message.includes('otra ciudad')
+        ? 'Ya existen horarios de otra ciudad en alguna de esas fechas. ' + error.message
+        : 'No se pudieron crear los horarios. Revisa los datos.';
+    recurringFormNote.className = 'form-note error';
+    return;
+  }
+
+  recurringFormNote.textContent = `¡Listo! Se crearon ${newSlots.length} horarios.`;
+  recurringFormNote.className = 'form-note success';
+  recurringForm.reset();
   await loadSlots();
 });
 
