@@ -158,6 +158,20 @@ begin
             '<div style="color:#1e2a28;font-size:15px;">%s a %s hrs</div>' ||
           '</td></tr>' ||
         '</table>' ||
+        '<hr style="border:none;border-top:1px solid #eef3f1;margin:26px 0 20px;">' ||
+        '<table role="presentation"><tr>' ||
+          '<td style="width:40px;vertical-align:top;"><div style="width:36px;height:36px;border-radius:50%%;background:#e7f5f0;color:#1f6f5c;font-weight:bold;font-size:13px;text-align:center;line-height:36px;">NC</div></td>' ||
+          '<td style="padding-left:12px;">' ||
+            '<div style="color:#1e2a28;font-size:14px;font-weight:bold;">Nayareth Cifuentes Fuchslocher</div>' ||
+            '<div style="color:#506b66;font-size:12px;margin-top:2px;">Terapeuta Ocupacional · Registro SIS N° 935279</div>' ||
+            '<div style="color:#506b66;font-size:12px;margin-top:2px;">Universidad San Sebastián, sede Valdivia</div>' ||
+            '<div style="color:#1f6f5c;font-size:12px;margin-top:10px;line-height:1.7;">' ||
+              'to.nayarethcifuentes@gmail.com<br>' ||
+              '+56 9 XXXX XXXX<br>' ||
+              'jesusespinoza24.github.io/nayarethcifuentesterapeutaocupacional' ||
+            '</div>' ||
+          '</td>' ||
+        '</tr></table>' ||
       '</td></tr>' ||
       '<tr><td style="background:#f6f8f7;padding:16px 28px;border-top:1px solid #eef3f1;">' ||
         '<p style="margin:0;color:#506b66;font-size:11px;">Aviso automático de tu sitio de agendamiento · Terapia Ocupacional a domicilio · Valdivia y La Unión, Región de Los Ríos</p>' ||
