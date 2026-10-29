@@ -86,6 +86,31 @@ function normalize(text) {
   return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
+// RUT chileno: se guarda como 12.345.678-9 y se valida con el dígito verificador
+function cleanRut(rut) {
+  return rut.replace(/[^0-9kK]/g, '').toUpperCase();
+}
+
+function formatRut(rut) {
+  const clean = cleanRut(rut);
+  if (clean.length < 2) return clean;
+  const body = clean.slice(0, -1).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${body}-${clean.slice(-1)}`;
+}
+
+function isValidRut(rut) {
+  const clean = cleanRut(rut);
+  if (!/^\d{7,8}[0-9K]$/.test(clean)) return false;
+  let sum = 0, factor = 2;
+  for (let i = clean.length - 2; i >= 0; i--) {
+    sum += Number(clean[i]) * factor;
+    factor = factor === 7 ? 2 : factor + 1;
+  }
+  const expected = 11 - (sum % 11);
+  const dv = expected === 11 ? '0' : expected === 10 ? 'K' : String(expected);
+  return dv === clean.slice(-1);
+}
+
 function emptyToNull(value) {
   const text = (value ?? '').toString().trim();
   return text === '' ? null : text;
@@ -162,9 +187,11 @@ async function loadPatients() {
 
 function renderPatientList() {
   const query = normalize(patientSearch.value.trim());
+  const rutQuery = cleanRut(query);
   const visible = patients.filter((p) =>
     (statusFilter === 'todos' || p.status === statusFilter) &&
-    (!query || normalize(p.full_name).includes(query))
+    (!query || normalize(p.full_name).includes(query) ||
+      (rutQuery.length >= 3 && p.rut && cleanRut(p.rut).includes(rutQuery)))
   );
 
   if (!visible.length) {
@@ -257,9 +284,12 @@ function renderProfile() {
   status.textContent = PATIENT_STATUS_LABELS[p.status];
 
   const facts = [
+    ['RUT', p.rut],
     ['Edad', ageLabel(p.birth_date)],
+    ['Colegio', p.school],
+    ['Curso', p.grade],
     ['Diagnóstico', p.diagnosis],
-    ['Apoderado/a', p.guardian_name],
+    ['Persona responsable', p.guardian_name],
     ['Teléfono', p.guardian_phone],
     ['Comuna', p.comuna],
     ['En terapia desde', formatDate(p.created_at)]
@@ -507,6 +537,9 @@ function openPatientDialog(patient = null) {
   $('deletePatientBtn').hidden = !patient;
   if (patient) {
     $('pFullName').value = patient.full_name;
+    $('pRut').value = patient.rut || '';
+    $('pSchool').value = patient.school || '';
+    $('pGrade').value = patient.grade || '';
     $('pBirthDate').value = patient.birth_date || '';
     $('pStatus').value = patient.status;
     $('pDiagnosis').value = patient.diagnosis || '';
@@ -515,8 +548,19 @@ function openPatientDialog(patient = null) {
     $('pComuna').value = patient.comuna || '';
     $('pNotes').value = patient.notes || '';
   }
+  updateAgeHint();
   $('patientDialog').showModal();
 }
+
+function updateAgeHint() {
+  const age = ageLabel($('pBirthDate').value);
+  $('pAge').textContent = age ? `Edad: ${age}` : '';
+}
+
+$('pBirthDate').addEventListener('input', updateAgeHint);
+$('pRut').addEventListener('blur', () => {
+  if ($('pRut').value.trim()) $('pRut').value = formatRut($('pRut').value);
+});
 
 $('newPatientBtn').addEventListener('click', () => openPatientDialog());
 $('editPatientBtn').addEventListener('click', () => openPatientDialog(currentPatient));
@@ -524,8 +568,17 @@ $('editPatientBtn').addEventListener('click', () => openPatientDialog(currentPat
 patientForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const formData = new FormData(patientForm);
+  const rut = emptyToNull(formData.get('rut'));
+  if (rut && !isValidRut(rut)) {
+    $('patientFormNote').textContent = 'El RUT no es válido. Revisa los números y el dígito verificador.';
+    $('pRut').focus();
+    return;
+  }
   const payload = {
     full_name: formData.get('full_name').trim(),
+    rut: rut ? formatRut(rut) : null,
+    school: emptyToNull(formData.get('school')),
+    grade: emptyToNull(formData.get('grade')),
     birth_date: emptyToNull(formData.get('birth_date')),
     status: formData.get('status'),
     diagnosis: emptyToNull(formData.get('diagnosis')),
@@ -538,6 +591,10 @@ patientForm.addEventListener('submit', async (e) => {
     ? db.from('patients').update(payload).eq('id', editingPatientId).select().single()
     : db.from('patients').insert(payload).select().single();
   const { data, error } = await query;
+  if (error && error.code === '23505') {
+    $('patientFormNote').textContent = 'Ya existe un paciente con ese RUT.';
+    return;
+  }
   if (error) return showError($('patientFormNote'), error);
 
   $('patientDialog').close();

@@ -61,7 +61,7 @@
           <h2>Pacientes</h2>
           <button type="button" class="pt-btn pt-btn-primary pt-btn-small" id="newPatientBtn">+ Nuevo</button>
         </div>
-        <input type="search" id="patientSearch" class="pt-search" placeholder="Buscar por nombre…" aria-label="Buscar paciente">
+        <input type="search" id="patientSearch" class="pt-search" placeholder="Buscar por nombre o RUT…" aria-label="Buscar paciente">
         <div class="pt-chips" role="group" aria-label="Filtrar por estado">
           <button type="button" class="pt-chip is-active" data-filter="activo">Activos</button>
           <button type="button" class="pt-chip" data-filter="pausa">En pausa</button>
@@ -134,8 +134,36 @@
       <input type="text" id="pFullName" name="full_name" minlength="2" maxlength="120" required>
     </label>
     <div class="pt-form-row">
+      <label for="pRut">RUT
+        <input type="text" id="pRut" name="rut" maxlength="12" placeholder="12.345.678-9" autocomplete="off">
+      </label>
       <label for="pBirthDate">Fecha de nacimiento
         <input type="date" id="pBirthDate" name="birth_date">
+        <span class="pt-field-hint" id="pAge"></span>
+      </label>
+    </div>
+    <div class="pt-form-row">
+      <label for="pSchool">Colegio
+        <input type="text" id="pSchool" name="school" maxlength="120">
+      </label>
+      <label for="pGrade">Curso
+        <input type="text" id="pGrade" name="grade" maxlength="60" placeholder="Ej.: 2° básico">
+      </label>
+    </div>
+    <label for="pDiagnosis">Diagnóstico o motivo de consulta
+      <input type="text" id="pDiagnosis" name="diagnosis" maxlength="300">
+    </label>
+    <div class="pt-form-row">
+      <label for="pGuardianName">Persona responsable
+        <input type="text" id="pGuardianName" name="guardian_name" maxlength="120">
+      </label>
+      <label for="pGuardianPhone">Teléfono
+        <input type="tel" id="pGuardianPhone" name="guardian_phone" maxlength="30" placeholder="+56 9 …">
+      </label>
+    </div>
+    <div class="pt-form-row">
+      <label for="pComuna">Comuna
+        <input type="text" id="pComuna" name="comuna" maxlength="80">
       </label>
       <label for="pStatus">Estado
         <select id="pStatus" name="status">
@@ -145,20 +173,6 @@
         </select>
       </label>
     </div>
-    <label for="pDiagnosis">Diagnóstico o motivo de consulta
-      <input type="text" id="pDiagnosis" name="diagnosis" maxlength="300">
-    </label>
-    <div class="pt-form-row">
-      <label for="pGuardianName">Apoderado/a
-        <input type="text" id="pGuardianName" name="guardian_name" maxlength="120">
-      </label>
-      <label for="pGuardianPhone">Teléfono
-        <input type="tel" id="pGuardianPhone" name="guardian_phone" maxlength="30" placeholder="+56 9 …">
-      </label>
-    </div>
-    <label for="pComuna">Comuna
-      <input type="text" id="pComuna" name="comuna" maxlength="80">
-    </label>
     <label for="pNotes">Notas generales
       <textarea id="pNotes" name="notes" rows="3" maxlength="2000"></textarea>
     </label>

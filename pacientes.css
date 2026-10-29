@@ -157,6 +157,7 @@ h1, h2, h3 { font-family: var(--font-head); line-height: 1.25; text-wrap: balanc
 }
 .pt-form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
 .pt-note { margin: 0; font-size: 0.9rem; min-height: 1.2em; }
+.pt-field-hint { font-size: 0.85rem; font-weight: 700; color: var(--purple); min-height: 1.2em; }
 .pt-note-error { color: var(--danger); font-weight: 700; }
 .pt-note-error:empty { display: none; }
 
