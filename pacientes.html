@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro de pacientes | Nayareth Cifuentes</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pacientes.css">
+</head>
+<body>
+
+<header class="pt-header">
+  <div class="pt-header-inner">
+    <a href="index.html#inicio" class="pt-logo">
+      <span class="pt-logo-mark">NC</span>
+      <span class="pt-logo-text">Nayareth Cifuentes<small>Registro de pacientes</small></span>
+    </a>
+    <nav class="pt-header-actions" id="headerActions" hidden>
+      <a href="admin.html" class="pt-btn pt-btn-ghost">Horarios</a>
+      <button type="button" class="pt-btn pt-btn-ghost" id="logoutBtn">Cerrar sesión</button>
+    </nav>
+  </div>
+</header>
+
+<main class="pt-main">
+
+  <!-- ── Inicio de sesión ─────────────────────────────────────────── -->
+  <section class="pt-login" id="loginView">
+    <div class="pt-login-card">
+      <div class="pt-login-stripes" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+      <h1>¡Hola de nuevo!</h1>
+      <p class="pt-login-lead">Ingresa para ver las fichas, objetivos y avances de tus pacientes.</p>
+      <form id="loginForm" class="pt-form">
+        <label for="loginEmail">Correo
+          <input type="email" id="loginEmail" name="email" autocomplete="username" required>
+        </label>
+        <label for="loginPassword">Contraseña
+          <input type="password" id="loginPassword" name="password" autocomplete="current-password" required>
+        </label>
+        <button type="submit" class="pt-btn pt-btn-primary pt-btn-block" id="loginBtn">Entrar</button>
+        <p class="pt-note pt-note-error" id="loginNote" role="alert"></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ── Aplicación ───────────────────────────────────────────────── -->
+  <section class="pt-app" id="appView" hidden>
+
+    <div class="pt-stats">
+      <div class="pt-stat pt-stat-blue"><span class="pt-stat-value" id="statPatients">0</span><span class="pt-stat-label">Pacientes activos</span></div>
+      <div class="pt-stat pt-stat-orange"><span class="pt-stat-value" id="statInProgress">0</span><span class="pt-stat-label">Objetivos en progreso</span></div>
+      <div class="pt-stat pt-stat-teal"><span class="pt-stat-value" id="statAchieved">0</span><span class="pt-stat-label">Objetivos logrados</span></div>
+      <div class="pt-stat pt-stat-pink"><span class="pt-stat-value" id="statSessions">0</span><span class="pt-stat-label">Sesiones este mes</span></div>
+    </div>
+
+    <div class="pt-layout">
+      <aside class="pt-sidebar">
+        <div class="pt-sidebar-head">
+          <h2>Pacientes</h2>
+          <button type="button" class="pt-btn pt-btn-primary pt-btn-small" id="newPatientBtn">+ Nuevo</button>
+        </div>
+        <input type="search" id="patientSearch" class="pt-search" placeholder="Buscar por nombre…" aria-label="Buscar paciente">
+        <div class="pt-chips" role="group" aria-label="Filtrar por estado">
+          <button type="button" class="pt-chip is-active" data-filter="activo">Activos</button>
+          <button type="button" class="pt-chip" data-filter="pausa">En pausa</button>
+          <button type="button" class="pt-chip" data-filter="alta">Alta</button>
+          <button type="button" class="pt-chip" data-filter="todos">Todos</button>
+        </div>
+        <ul class="pt-patient-list" id="patientList"></ul>
+      </aside>
+
+      <div class="pt-detail" id="patientDetail">
+        <div class="pt-empty" id="detailEmpty">
+          <div class="pt-empty-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+          <h2>Elige un paciente</h2>
+          <p>Selecciona a alguien de la lista para ver su ficha, sus objetivos y cómo va avanzando. Si es tu primer paciente, usa <strong>+ Nuevo</strong>.</p>
+        </div>
+
+        <div id="detailContent" hidden>
+          <div class="pt-profile">
+            <div class="pt-avatar" id="profileAvatar"></div>
+            <div class="pt-profile-main">
+              <div class="pt-profile-title">
+                <h2 id="profileName"></h2>
+                <span class="pt-pill" id="profileStatus"></span>
+              </div>
+              <dl class="pt-profile-facts" id="profileFacts"></dl>
+            </div>
+            <button type="button" class="pt-btn pt-btn-ghost pt-btn-small" id="editPatientBtn">Editar ficha</button>
+          </div>
+          <p class="pt-profile-notes" id="profileNotes" hidden></p>
+
+          <div class="pt-tabs" role="tablist">
+            <button type="button" class="pt-tab is-active" role="tab" data-tab="goals" aria-selected="true">Objetivos</button>
+            <button type="button" class="pt-tab" role="tab" data-tab="progress" aria-selected="false">Avance</button>
+            <button type="button" class="pt-tab" role="tab" data-tab="sessions" aria-selected="false">Sesiones</button>
+          </div>
+
+          <div class="pt-tab-panel" id="tab-goals" role="tabpanel">
+            <div class="pt-panel-head">
+              <p class="pt-panel-summary" id="goalsSummary"></p>
+              <button type="button" class="pt-btn pt-btn-primary pt-btn-small" id="newGoalBtn">+ Nuevo objetivo</button>
+            </div>
+            <div class="pt-goal-grid" id="goalList"></div>
+          </div>
+
+          <div class="pt-tab-panel" id="tab-progress" role="tabpanel" hidden>
+            <div class="pt-overall" id="overallProgress"></div>
+            <div class="pt-chart-grid" id="progressCharts"></div>
+          </div>
+
+          <div class="pt-tab-panel" id="tab-sessions" role="tabpanel" hidden>
+            <div class="pt-panel-head">
+              <p class="pt-panel-summary" id="sessionsSummary"></p>
+              <button type="button" class="pt-btn pt-btn-primary pt-btn-small" id="newSessionBtn">+ Registrar sesión</button>
+            </div>
+            <ol class="pt-timeline" id="sessionList"></ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="pt-tooltip" id="chartTooltip" hidden></div>
+
+<!-- ── Ventanas de formularios ─────────────────────────────────────── -->
+<dialog class="pt-dialog" id="patientDialog">
+  <form method="dialog" class="pt-form" id="patientForm">
+    <h2 id="patientDialogTitle">Nuevo paciente</h2>
+    <label for="pFullName">Nombre completo
+      <input type="text" id="pFullName" name="full_name" minlength="2" maxlength="120" required>
+    </label>
+    <div class="pt-form-row">
+      <label for="pBirthDate">Fecha de nacimiento
+        <input type="date" id="pBirthDate" name="birth_date">
+      </label>
+      <label for="pStatus">Estado
+        <select id="pStatus" name="status">
+          <option value="activo">Activo</option>
+          <option value="pausa">En pausa</option>
+          <option value="alta">Alta</option>
+        </select>
+      </label>
+    </div>
+    <label for="pDiagnosis">Diagnóstico o motivo de consulta
+      <input type="text" id="pDiagnosis" name="diagnosis" maxlength="300">
+    </label>
+    <div class="pt-form-row">
+      <label for="pGuardianName">Apoderado/a
+        <input type="text" id="pGuardianName" name="guardian_name" maxlength="120">
+      </label>
+      <label for="pGuardianPhone">Teléfono
+        <input type="tel" id="pGuardianPhone" name="guardian_phone" maxlength="30" placeholder="+56 9 …">
+      </label>
+    </div>
+    <label for="pComuna">Comuna
+      <input type="text" id="pComuna" name="comuna" maxlength="80">
+    </label>
+    <label for="pNotes">Notas generales
+      <textarea id="pNotes" name="notes" rows="3" maxlength="2000"></textarea>
+    </label>
+    <p class="pt-note pt-note-error" id="patientFormNote" role="alert"></p>
+    <div class="pt-dialog-actions">
+      <button type="button" class="pt-btn pt-btn-danger-ghost" id="deletePatientBtn" hidden>Eliminar paciente</button>
+      <span class="pt-spacer"></span>
+      <button type="button" class="pt-btn pt-btn-ghost" data-close>Cancelar</button>
+      <button type="submit" class="pt-btn pt-btn-primary">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="pt-dialog" id="goalDialog">
+  <form method="dialog" class="pt-form" id="goalForm">
+    <h2 id="goalDialogTitle">Nuevo objetivo</h2>
+    <label for="gTitle">Objetivo
+      <input type="text" id="gTitle" name="title" minlength="2" maxlength="200" required placeholder="Ej.: Abotonar su chaqueta sin ayuda">
+    </label>
+    <div class="pt-form-row">
+      <label for="gArea">Área
+        <select id="gArea" name="area" required></select>
+      </label>
+      <label for="gTargetDate">Fecha meta
+        <input type="date" id="gTargetDate" name="target_date">
+      </label>
+    </div>
+    <label for="gDescription">Cómo se medirá (opcional)
+      <textarea id="gDescription" name="description" rows="3" maxlength="1000" placeholder="Ej.: 4 de 5 intentos durante la sesión"></textarea>
+    </label>
+    <p class="pt-note pt-note-error" id="goalFormNote" role="alert"></p>
+    <div class="pt-dialog-actions">
+      <button type="button" class="pt-btn pt-btn-danger-ghost" id="deleteGoalBtn" hidden>Eliminar objetivo</button>
+      <span class="pt-spacer"></span>
+      <button type="button" class="pt-btn pt-btn-ghost" data-close>Cancelar</button>
+      <button type="submit" class="pt-btn pt-btn-primary">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="pt-dialog" id="progressDialog">
+  <form method="dialog" class="pt-form" id="progressForm">
+    <h2>Registrar avance</h2>
+    <p class="pt-dialog-sub" id="progressGoalTitle"></p>
+    <label for="prValue">Logro actual: <strong id="prValueLabel">0%</strong>
+      <input type="range" id="prValue" name="progress" min="0" max="100" step="5" value="0">
+    </label>
+    <div class="pt-quick" role="group" aria-label="Valores rápidos">
+      <button type="button" data-value="25">25%</button>
+      <button type="button" data-value="50">50%</button>
+      <button type="button" data-value="75">75%</button>
+      <button type="button" data-value="100">¡Logrado!</button>
+    </div>
+    <label for="prDate">Fecha
+      <input type="date" id="prDate" name="recorded_on" required>
+    </label>
+    <label for="prNote">Nota (opcional)
+      <textarea id="prNote" name="note" rows="2" maxlength="500" placeholder="Ej.: Lo logró con apoyo verbal"></textarea>
+    </label>
+    <p class="pt-note pt-note-error" id="progressFormNote" role="alert"></p>
+    <div class="pt-dialog-actions">
+      <span class="pt-spacer"></span>
+      <button type="button" class="pt-btn pt-btn-ghost" data-close>Cancelar</button>
+      <button type="submit" class="pt-btn pt-btn-primary">Guardar avance</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="pt-dialog" id="sessionDialog">
+  <form method="dialog" class="pt-form" id="sessionForm">
+    <h2 id="sessionDialogTitle">Registrar sesión</h2>
+    <div class="pt-form-row">
+      <label for="sDate">Fecha
+        <input type="date" id="sDate" name="session_date" required>
+      </label>
+      <fieldset class="pt-rating">
+        <legend>Participación</legend>
+        <div class="pt-rating-options">
+          <input type="radio" id="sPart1" name="participation" value="1"><label for="sPart1">1</label>
+          <input type="radio" id="sPart2" name="participation" value="2"><label for="sPart2">2</label>
+          <input type="radio" id="sPart3" name="participation" value="3"><label for="sPart3">3</label>
+          <input type="radio" id="sPart4" name="participation" value="4"><label for="sPart4">4</label>
+          <input type="radio" id="sPart5" name="participation" value="5"><label for="sPart5">5</label>
+        </div>
+      </fieldset>
+    </div>
+    <label for="sActivities">Actividades realizadas
+      <textarea id="sActivities" name="activities" rows="3" maxlength="2000" placeholder="Ej.: Circuito motor, enhebrado de cuentas, juego de texturas"></textarea>
+    </label>
+    <label for="sObservations">Observaciones
+      <textarea id="sObservations" name="observations" rows="3" maxlength="2000"></textarea>
+    </label>
+    <p class="pt-note pt-note-error" id="sessionFormNote" role="alert"></p>
+    <div class="pt-dialog-actions">
+      <button type="button" class="pt-btn pt-btn-danger-ghost" id="deleteSessionBtn" hidden>Eliminar sesión</button>
+      <span class="pt-spacer"></span>
+      <button type="button" class="pt-btn pt-btn-ghost" data-close>Cancelar</button>
+      <button type="submit" class="pt-btn pt-btn-primary">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="pt-dialog pt-dialog-small" id="confirmDialog">
+  <form method="dialog" class="pt-form">
+    <h2 id="confirmTitle">¿Eliminar?</h2>
+    <p class="pt-dialog-sub" id="confirmText"></p>
+    <div class="pt-dialog-actions">
+      <span class="pt-spacer"></span>
+      <button type="submit" class="pt-btn pt-btn-ghost" value="cancel">Cancelar</button>
+      <button type="submit" class="pt-btn pt-btn-danger" value="ok">Eliminar</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/pacientes.js"></script>
+</body>
+</html>
