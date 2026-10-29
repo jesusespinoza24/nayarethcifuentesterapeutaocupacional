@@ -96,44 +96,40 @@
           <ol class="pt-steps" id="processSteps" aria-label="Etapas de la terapia"></ol>
 
           <div class="pt-tabs" role="tablist">
+            <button type="button" class="pt-tab" role="tab" data-tab="ficha" aria-selected="false">Ficha clínica</button>
             <button type="button" class="pt-tab" role="tab" data-tab="evaluation" aria-selected="false">Evaluación</button>
             <button type="button" class="pt-tab is-active" role="tab" data-tab="goals" aria-selected="true">Objetivos</button>
             <button type="button" class="pt-tab" role="tab" data-tab="progress" aria-selected="false">Avance</button>
             <button type="button" class="pt-tab" role="tab" data-tab="sessions" aria-selected="false">Sesiones</button>
-            <button type="button" class="pt-tab" role="tab" data-tab="report" aria-selected="false">Informe final</button>
+            <button type="button" class="pt-tab" role="tab" data-tab="report" aria-selected="false">Informe</button>
+          </div>
+
+          <div class="pt-tab-panel" id="tab-ficha" role="tabpanel" hidden>
+            <p class="pt-panel-summary pt-tab-intro">Se completa en la primera sesión. Cada sección aparece igual en el informe.</p>
+            <div class="pt-sections" id="fichaSections"></div>
           </div>
 
           <div class="pt-tab-panel" id="tab-evaluation" role="tabpanel" hidden>
             <div class="pt-panel-head">
               <div>
-                <h3 class="pt-panel-title">Pautas de evaluación</h3>
+                <h3 class="pt-panel-title">Instrumentos de evaluación</h3>
                 <p class="pt-panel-summary">Se aplican en las sesiones 1 y 2, antes de definir los objetivos.</p>
               </div>
-              <button type="button" class="pt-btn pt-btn-primary pt-btn-small" id="newEvaluationBtn">+ Registrar evaluación</button>
+              <button type="button" class="pt-btn pt-btn-primary pt-btn-small" id="newEvaluationBtn">+ Registrar instrumento</button>
             </div>
             <div class="pt-eval-list" id="evaluationList"></div>
+            <div class="pt-sections pt-sections-spaced" id="evaluationSections"></div>
           </div>
 
           <div class="pt-tab-panel" id="tab-goals" role="tabpanel">
-            <div class="pt-general-goal">
-              <div class="pt-general-goal-head">
-                <span class="pt-section-label">Objetivo general</span>
-                <button type="button" class="pt-link-btn" id="editGeneralGoalBtn">Editar</button>
-              </div>
-              <p id="generalGoalText"></p>
-            </div>
             <div class="pt-panel-head">
               <div>
-                <h3 class="pt-panel-title">Objetivos específicos</h3>
+                <h3 class="pt-panel-title">Objetivos de intervención</h3>
                 <p class="pt-panel-summary" id="goalsSummary"></p>
               </div>
-              <button type="button" class="pt-btn pt-btn-primary pt-btn-small" id="newGoalBtn">+ Objetivo específico</button>
+              <button type="button" class="pt-btn pt-btn-primary pt-btn-small" id="newGeneralGoalBtn">+ Objetivo general</button>
             </div>
-            <div class="pt-goal-grid" id="goalList"></div>
-            <details class="pt-done" id="doneGoals" hidden>
-              <summary>Cumplidos (<span id="doneCount">0</span>)</summary>
-              <div class="pt-goal-grid" id="doneGoalList"></div>
-            </details>
+            <div class="pt-gg-list" id="generalGoalList"></div>
           </div>
 
           <div class="pt-tab-panel" id="tab-progress" role="tabpanel" hidden>
@@ -153,8 +149,8 @@
             <form class="pt-form pt-report-form" id="reportForm">
               <div class="pt-panel-head">
                 <div>
-                  <h3 class="pt-panel-title">Informe final</h3>
-                  <p class="pt-panel-summary">Se completa al terminar las sesiones. Los datos, la evaluación y los objetivos se agregan solos al informe.</p>
+                  <h3 class="pt-panel-title">Informe</h3>
+                  <p class="pt-panel-summary">Se arma solo con la ficha clínica, la evaluación y los objetivos. Al terminar las sesiones, agrega las conclusiones y recomendaciones.</p>
                 </div>
               </div>
               <div class="pt-form-row">
@@ -209,6 +205,24 @@
       </label>
     </div>
     <div class="pt-form-row">
+      <label for="pSex">Sexo
+        <select id="pSex" name="sex">
+          <option value="">Sin indicar</option>
+          <option>Masculino</option>
+          <option>Femenino</option>
+        </select>
+      </label>
+      <label for="pLaterality">Lateralidad
+        <select id="pLaterality" name="laterality">
+          <option value="">Sin indicar</option>
+          <option>Diestro</option>
+          <option>Zurdo</option>
+          <option>Ambidiestro</option>
+          <option>Sin definir aún</option>
+        </select>
+      </label>
+    </div>
+    <div class="pt-form-row">
       <label for="pSchool">Colegio
         <input type="text" id="pSchool" name="school" maxlength="120">
       </label>
@@ -224,7 +238,7 @@
     </label>
     <div class="pt-form-row">
       <label for="pGuardianName">Persona responsable
-        <input type="text" id="pGuardianName" name="guardian_name" maxlength="120">
+        <input type="text" id="pGuardianName" name="guardian_name" maxlength="120" placeholder="Ej.: Ana, su madre">
       </label>
       <label for="pGuardianPhone">Teléfono
         <input type="tel" id="pGuardianPhone" name="guardian_phone" maxlength="30" placeholder="+56 9 …">
@@ -252,10 +266,10 @@
         </select>
       </label>
     </div>
-    <label for="pGeneralGoal">Objetivo general
-      <textarea id="pGeneralGoal" name="general_goal" rows="3" maxlength="1000" placeholder="Ej.: Favorecer su autonomía en las actividades de la vida diaria en el hogar y el colegio"></textarea>
+    <label for="pRnd">Inscripción en el RND
+      <input type="text" id="pRnd" name="rnd" maxlength="200" placeholder="Ej.: Inscrito / Sin información">
     </label>
-    <label for="pNotes">Notas generales
+    <label for="pNotes">Notas generales (no salen en el informe)
       <textarea id="pNotes" name="notes" rows="3" maxlength="2000"></textarea>
     </label>
     <p class="pt-note pt-note-error" id="patientFormNote" role="alert"></p>
@@ -271,6 +285,9 @@
 <dialog class="pt-dialog" id="goalDialog">
   <form method="dialog" class="pt-form" id="goalForm">
     <h2 id="goalDialogTitle">Nuevo objetivo específico</h2>
+    <label for="gGeneral">Objetivo general al que pertenece
+      <select id="gGeneral" name="general_goal_id" required></select>
+    </label>
     <label for="gTitle">Objetivo específico
       <input type="text" id="gTitle" name="title" minlength="2" maxlength="200" required placeholder="Ej.: Abotonar su chaqueta sin ayuda">
     </label>
@@ -282,11 +299,8 @@
         <input type="date" id="gTargetDate" name="target_date">
       </label>
     </div>
-    <label for="gDescription">Cómo se medirá (opcional)
-      <textarea id="gDescription" name="description" rows="2" maxlength="1000" placeholder="Ej.: 4 de 5 intentos durante la sesión"></textarea>
-    </label>
-    <label for="gStrategies">Estrategias
-      <textarea id="gStrategies" name="strategies" rows="3" maxlength="2000" placeholder="Ej.: Práctica con tablero de botones grandes, modelado, apoyo visual con secuencia de pasos"></textarea>
+    <label for="gDescription">Indicador de logro
+      <textarea id="gDescription" name="description" rows="3" maxlength="1000" placeholder="Ej.: Que logre abotonar una prenda en al menos 3 de 5 intentos de forma independiente"></textarea>
     </label>
     <p class="pt-note pt-note-error" id="goalFormNote" role="alert"></p>
     <div class="pt-dialog-actions">
@@ -370,24 +384,72 @@
 
 <dialog class="pt-dialog" id="evaluationDialog">
   <form method="dialog" class="pt-form" id="evaluationForm">
-    <h2 id="evaluationDialogTitle">Registrar evaluación</h2>
+    <h2 id="evaluationDialogTitle">Registrar instrumento</h2>
+    <div class="pt-quick" role="group" aria-label="Instrumentos frecuentes" id="scorePresets"></div>
     <div class="pt-form-row">
-      <label for="eInstrument">Pauta o instrumento aplicado
-        <input type="text" id="eInstrument" name="instrument" minlength="2" maxlength="200" required placeholder="Ej.: Perfil Sensorial 2">
+      <label for="eInstrument">Instrumento aplicado
+        <input type="text" id="eInstrument" name="instrument" minlength="2" maxlength="200" required placeholder="Ej.: Sensory Processing Measure (SPM) Hogar">
       </label>
       <label for="eDate">Fecha
         <input type="date" id="eDate" name="eval_date" required>
       </label>
     </div>
-    <label for="eResults">Resultados
-      <textarea id="eResults" name="results" rows="4" maxlength="4000" placeholder="Puntajes, observaciones y hallazgos de la pauta"></textarea>
+    <label for="eDescription">Descripción del instrumento
+      <textarea id="eDescription" name="description" rows="2" maxlength="4000" placeholder="Qué evalúa y cómo se aplicó"></textarea>
     </label>
-    <label for="eConclusions">Conclusiones y áreas a intervenir
-      <textarea id="eConclusions" name="conclusions" rows="3" maxlength="4000"></textarea>
+    <fieldset class="pt-scores">
+      <legend>Puntajes (deja vacías las columnas que no uses)</legend>
+      <div class="pt-score-head" aria-hidden="true"><span>Ítem o dimensión</span><span>P. bruto</span><span>Puntaje T</span><span>Interpretación</span><span></span></div>
+      <div id="scoreRows"></div>
+      <button type="button" class="pt-link-btn" id="addScoreRowBtn">+ Agregar fila</button>
+    </fieldset>
+    <label for="eResults">Análisis de resultados
+      <textarea id="eResults" name="results" rows="5" maxlength="4000" placeholder="Interpretación de los resultados por área"></textarea>
+    </label>
+    <label for="eConclusions">Conclusión del instrumento (opcional)
+      <textarea id="eConclusions" name="conclusions" rows="2" maxlength="4000"></textarea>
     </label>
     <p class="pt-note pt-note-error" id="evaluationFormNote" role="alert"></p>
     <div class="pt-dialog-actions">
       <button type="button" class="pt-btn pt-btn-danger-ghost" id="deleteEvaluationBtn" hidden>Eliminar</button>
+      <span class="pt-spacer"></span>
+      <button type="button" class="pt-btn pt-btn-ghost" data-close>Cancelar</button>
+      <button type="submit" class="pt-btn pt-btn-primary">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="pt-dialog" id="generalGoalDialog">
+  <form method="dialog" class="pt-form" id="generalGoalForm">
+    <h2 id="generalGoalDialogTitle">Nuevo objetivo general</h2>
+    <label for="ggTitle">Objetivo general
+      <textarea id="ggTitle" name="title" rows="2" minlength="2" maxlength="500" required placeholder="Ej.: Mejorar el desempeño en las habilidades motoras en contexto hogar y escolar"></textarea>
+    </label>
+    <label for="ggPeriod">Plazo
+      <input type="text" id="ggPeriod" name="period" maxlength="100" placeholder="Ej.: 6 meses">
+    </label>
+    <label for="ggStrategies">Estrategias
+      <textarea id="ggStrategies" name="strategies" rows="2" maxlength="3000" placeholder="Ej.: Modelado, moldeamiento, refuerzo positivo, pictogramas"></textarea>
+    </label>
+    <label for="ggActivities">Actividades (una por línea)
+      <textarea id="ggActivities" name="activities" rows="5" maxlength="6000" placeholder="Ej.: Enhebrado de cuentas de colores grandes&#10;Circuito con obstáculos"></textarea>
+    </label>
+    <p class="pt-note pt-note-error" id="generalGoalFormNote" role="alert"></p>
+    <div class="pt-dialog-actions">
+      <button type="button" class="pt-btn pt-btn-danger-ghost" id="deleteGeneralGoalBtn" hidden>Eliminar</button>
+      <span class="pt-spacer"></span>
+      <button type="button" class="pt-btn pt-btn-ghost" data-close>Cancelar</button>
+      <button type="submit" class="pt-btn pt-btn-primary">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="pt-dialog" id="sectionDialog">
+  <form method="dialog" class="pt-form" id="sectionForm">
+    <h2 id="sectionDialogTitle"></h2>
+    <div class="pt-form" id="sectionFields"></div>
+    <p class="pt-note pt-note-error" id="sectionFormNote" role="alert"></p>
+    <div class="pt-dialog-actions">
       <span class="pt-spacer"></span>
       <button type="button" class="pt-btn pt-btn-ghost" data-close>Cancelar</button>
       <button type="submit" class="pt-btn pt-btn-primary">Guardar</button>

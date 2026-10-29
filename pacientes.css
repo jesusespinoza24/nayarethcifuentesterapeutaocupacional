@@ -363,16 +363,62 @@ h1, h2, h3 { font-family: var(--font-head); line-height: 1.25; text-wrap: balanc
 .pt-panel-summary:empty { display: none; }
 .pt-section-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); font-weight: 800; }
 
-.pt-general-goal {
-  padding: 14px 16px;
-  border-radius: 18px;
-  background: linear-gradient(120deg, rgba(112, 72, 232, 0.10), rgba(67, 97, 238, 0.08));
-  margin-bottom: 20px;
+.pt-tab-intro { margin-bottom: 14px; }
+
+/* ── Secciones de texto (ficha clínica y evaluación) ─────────────── */
+.pt-sections { display: flex; flex-direction: column; gap: 12px; }
+.pt-sections-spaced { margin-top: 18px; }
+.pt-section-card { border: 2px solid var(--border); border-radius: 16px; padding: 14px 16px; min-width: 0; }
+.pt-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.pt-section-head h4 { margin: 0; font-family: var(--font-head); font-size: 1rem; }
+.pt-section-field + .pt-section-field { margin-top: 10px; }
+.pt-section-field p { margin: 2px 0 0; white-space: pre-line; overflow-wrap: anywhere; }
+.pt-section-empty { margin: 0; color: var(--ink-soft); font-size: 0.9rem; }
+
+/* ── Objetivos generales (agrupan objetivos específicos) ─────────── */
+.pt-gg-list { display: flex; flex-direction: column; gap: 18px; }
+.pt-gg {
+  border-radius: 20px;
+  padding: 16px;
+  background: linear-gradient(120deg, rgba(112, 72, 232, 0.08), rgba(67, 97, 238, 0.05));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
 }
-.pt-general-goal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.pt-general-goal-head .pt-section-label { color: var(--purple); }
-.pt-general-goal p { margin: 4px 0 0; font-weight: 700; white-space: pre-line; overflow-wrap: anywhere; }
-.pt-general-goal p.is-empty { font-weight: 600; color: var(--ink-soft); }
+.pt-gg-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.pt-gg-head .pt-section-label { color: var(--purple); }
+.pt-gg-head h3 { font-size: 1.05rem; margin-top: 2px; overflow-wrap: anywhere; }
+.pt-gg .pt-goal { background: var(--surface); }
+.pt-gg .pt-done { margin-top: 0; }
+.pt-gg-add { align-self: flex-start; }
+.pt-gg-plan {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface);
+}
+.pt-gg-plan p { margin: 2px 0 0; white-space: pre-line; overflow-wrap: anywhere; }
+.pt-gg-plan ul { margin: 4px 0 0; padding-left: 18px; }
+.pt-gg-plan li { margin-bottom: 2px; overflow-wrap: anywhere; }
+
+/* ── Tabla de puntajes en la ventana de instrumento ──────────────── */
+.pt-quick-label { font-size: 0.85rem; font-weight: 700; color: var(--ink-soft); align-self: center; }
+.pt-scores { border: none; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.pt-scores legend { font-weight: 700; font-size: 0.92rem; padding: 0; margin-bottom: 6px; }
+.pt-score-head, .pt-score-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) 28px; gap: 6px; align-items: center; }
+.pt-score-head span { font-size: 0.72rem; font-weight: 800; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
+#scoreRows { display: flex; flex-direction: column; gap: 6px; }
+.pt-form .pt-score-row input { padding: 7px 8px; font-size: 14px; }
+.pt-score-del { border: none; background: none; color: var(--ink-soft); font-size: 1.3rem; cursor: pointer; line-height: 1; }
+.pt-score-del:hover { color: var(--danger); }
+.pt-scores .pt-link-btn { align-self: flex-start; }
+.pt-score-table { margin-top: 8px; }
+.pt-eval .pt-report-table table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.pt-eval .pt-report-table th, .pt-eval .pt-report-table td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--border); }
+.pt-eval .pt-report-table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); }
 
 /* ── Objetivos ───────────────────────────────────────────────────── */
 .pt-goal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
@@ -604,42 +650,50 @@ h1, h2, h3 { font-family: var(--font-head); line-height: 1.25; text-wrap: balanc
 .pt-check-pay { align-self: start; padding-bottom: 0; }
 .pt-note-ok { color: #0b7a6b; font-weight: 800; }
 .pt-report-preview-title { margin: 26px 0 10px; }
+/* El informe imita un documento de Word: Arial, títulos en mayúscula subrayados, texto justificado */
 .pt-report {
   border: 2px solid var(--border);
   border-radius: 18px;
-  padding: 28px;
-  background: var(--surface);
-  color: var(--ink);
+  padding: 40px 48px;
+  background: #ffffff;
+  color: #111111;
+  font-family: Arial, Helvetica, sans-serif;
   font-size: 0.95rem;
+  line-height: 1.6;
 }
-.pt-report-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding-bottom: 14px;
-  border-bottom: 3px solid var(--teal);
+.pt-report-head { text-align: center; padding-bottom: 6px; }
+.pt-report-head h2 { font-family: Arial, Helvetica, sans-serif; font-size: 1.1rem; font-weight: 700; }
+.pt-report-head p { margin: 2px 0 0; color: #444444; text-align: center; }
+.pt-report section { margin-top: 20px; }
+.pt-report h3 {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  margin-bottom: 8px;
 }
-.pt-report-head h2 { font-size: 1.3rem; }
-.pt-report-head p { margin: 4px 0 0; color: var(--ink-soft); font-weight: 700; }
-.pt-report-brand { display: flex; flex-direction: column; text-align: left; font-size: 0.85rem; color: var(--ink-soft); }
-.pt-report-brand strong { color: var(--ink); font-family: var(--font-head); }
-.pt-report section { margin-top: 18px; }
-.pt-report h3 { font-size: 1rem; color: var(--teal); margin-bottom: 6px; }
-.pt-report h4 { font-size: 0.88rem; margin: 10px 0 2px; font-family: var(--font-head); }
-.pt-report p { margin: 4px 0; white-space: pre-line; overflow-wrap: anywhere; }
+.pt-report h4 { font-family: Arial, Helvetica, sans-serif; font-size: 0.95rem; font-weight: 700; margin: 14px 0 4px; }
+.pt-report h4.pt-report-sub { text-decoration: underline; font-style: italic; }
+.pt-report p { margin: 4px 0; white-space: pre-line; overflow-wrap: anywhere; text-align: justify; }
+.pt-report ul { margin: 4px 0; padding-left: 22px; }
+.pt-report li { margin-bottom: 4px; text-align: justify; overflow-wrap: anywhere; }
+.pt-report ul.pt-report-dash { list-style: none; padding-left: 22px; }
+.pt-report ul.pt-report-dash li { position: relative; }
+.pt-report ul.pt-report-dash li::before { content: "-"; position: absolute; left: -16px; }
+.pt-report-goal + .pt-report-goal { margin-top: 18px; }
 .pt-report-empty { color: var(--ink-soft); font-style: italic; }
 .pt-report-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 4px 18px; margin: 0; }
 .pt-report-facts dt { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); font-weight: 800; }
 .pt-report-facts dd { margin: 0 0 4px; font-weight: 700; overflow-wrap: anywhere; }
 .pt-report-table { overflow-x: auto; }
 .pt-report table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 0.88rem; }
-.pt-report th, .pt-report td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
-.pt-report th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); }
+.pt-report th, .pt-report td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #d0d0d0; vertical-align: top; }
+.pt-report th { font-size: 0.85rem; font-weight: 700; color: #111111; }
 .pt-report td small { color: var(--ink-soft); }
 .pt-report-sign { margin-top: 48px; text-align: center; font-size: 0.88rem; font-weight: 700; }
-.pt-report-sign span { display: block; width: 220px; margin: 0 auto 6px; border-top: 1.5px solid var(--ink); }
+.pt-report-sign span { display: block; width: 240px; margin: 0 auto 6px; border-top: 1.5px solid #111111; }
 .pt-session-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .pt-session-date { font-family: var(--font-head); font-weight: 600; }
 .pt-session p { margin: 6px 0 0; white-space: pre-line; overflow-wrap: anywhere; }
@@ -695,8 +749,7 @@ h1, h2, h3 { font-family: var(--font-head); line-height: 1.25; text-wrap: balanc
 
 @media (max-width: 700px) {
   .pt-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .pt-report { padding: 18px 14px; }
-  .pt-report-brand { text-align: left; }
+  .pt-report { padding: 20px 16px; }
 }
 
 /* Al imprimir solo sale el informe final (se copia a #printArea) */
@@ -712,4 +765,10 @@ h1, h2, h3 { font-family: var(--font-head); line-height: 1.25; text-wrap: balanc
 @media (prefers-reduced-motion: reduce) {
   .pt-btn, .pt-bar span { transition: none; }
   .pt-btn:hover { transform: none; }
+}
+
+@media (max-width: 520px) {
+  .pt-score-head { display: none; }
+  .pt-score-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 28px; }
+  .pt-score-row input[data-k="item"], .pt-score-row input[data-k="interpretation"] { grid-column: span 2; }
 }

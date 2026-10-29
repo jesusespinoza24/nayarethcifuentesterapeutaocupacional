@@ -9,6 +9,91 @@ const AREAS = {
 const PATIENT_STATUS_LABELS = { activo: 'Activo', pausa: 'En pausa', alta: 'Alta' };
 const INSURANCE_LABELS = { fonasa: 'Fonasa', isapre: 'Isapre', particular: 'Particular' };
 const SESSION_KIND_LABELS = { evaluacion: 'Evaluación', intervencion: 'Intervención' };
+
+// Secciones de texto libre de la ficha clínica y la evaluación (se guardan en patients.clinical)
+const SECTIONS = {
+  clinicos: {
+    title: 'Antecedentes clínicos',
+    hint: 'Diagnósticos, tratamiento farmacológico, otras intervenciones, ayudas técnicas e hitos del desarrollo.',
+    fields: [
+      { key: 'diagnoses', label: 'Diagnósticos', rows: 3 },
+      { key: 'medication', label: 'Tratamiento farmacológico', rows: 1 },
+      { key: 'other_interventions', label: 'Otras intervenciones', rows: 2 },
+      { key: 'technical_aids', label: 'Ayudas técnicas', rows: 1 },
+      { key: 'milestones', label: 'Hitos en el desarrollo', rows: 3 }
+    ]
+  },
+  familiares: {
+    title: 'Antecedentes familiares',
+    hint: 'Con quién vive y cómo está compuesta su familia.',
+    fields: [{ key: 'family', label: 'Antecedentes familiares', rows: 3 }]
+  },
+  metodos: {
+    title: 'Métodos de evaluación',
+    hint: 'Por ejemplo: observación clínica, entrevista a la familia.',
+    fields: [{ key: 'evaluation_methods', label: 'Métodos de evaluación (uno por línea)', rows: 3 }]
+  },
+  observacion: {
+    title: 'Observación clínica: habilidades de desempeño',
+    hint: 'Habilidades motoras, de procesamiento y de comunicación e interacción observadas en sesión.',
+    fields: [
+      { key: 'obs_motor', label: 'Habilidades motoras', rows: 3 },
+      { key: 'obs_processing', label: 'Habilidades de procesamiento', rows: 3 },
+      { key: 'obs_communication', label: 'Habilidades de comunicación e interacción', rows: 3 }
+    ]
+  },
+  ocupacion: {
+    title: 'Áreas de la ocupación',
+    hint: 'AVDB, escolar, participación social, descanso y sueño, y juego.',
+    fields: [
+      { key: 'occ_avdb', label: 'AVDB', rows: 3 },
+      { key: 'occ_school', label: 'Escolar', rows: 3 },
+      { key: 'occ_social', label: 'Participación social', rows: 2 },
+      { key: 'occ_sleep', label: 'Descanso y sueño', rows: 2 },
+      { key: 'occ_play', label: 'Juego', rows: 2 }
+    ]
+  },
+  diagnostico: {
+    title: 'Diagnóstico ocupacional',
+    hint: 'Síntesis del desempeño ocupacional y los factores que lo explican.',
+    fields: [{ key: 'occ_diagnosis', label: 'Diagnóstico ocupacional', rows: 8 }]
+  },
+  modelos: {
+    title: 'Modelos de intervención',
+    hint: 'Modelo de práctica y modelos de referencia, con su justificación para este caso.',
+    fields: [
+      { key: 'practice_model', label: 'Modelo de práctica', rows: 5 },
+      { key: 'reference_models', label: 'Modelos de referencia', rows: 6 }
+    ]
+  }
+};
+const FICHA_SECTIONS = ['clinicos', 'familiares'];
+const EVALUATION_SECTIONS = ['metodos', 'observacion', 'ocupacion', 'diagnostico', 'modelos'];
+
+// Tabla de puntajes de cada instrumento; las columnas vacías no se muestran
+const SCORE_COLUMNS = [
+  { key: 'item', label: 'Ítem o dimensión' },
+  { key: 'raw', label: 'Puntaje bruto' },
+  { key: 'score', label: 'Puntaje T' },
+  { key: 'interpretation', label: 'Interpretación' }
+];
+const SCORE_PRESETS = [
+  {
+    label: 'SPM Hogar',
+    instrument: 'Sensory Processing Measure (SPM) Hogar',
+    items: ['Visual', 'Auditivo', 'Táctil', 'Gusto y olfato', 'Conciencia del cuerpo', 'Equilibrio y movimiento', 'Planificación e ideas', 'Participación social']
+  },
+  {
+    label: 'TADI',
+    instrument: 'Test de Aprendizaje y Desarrollo Infantil (TADI)',
+    items: ['Dimensión Cognición', 'Dimensión Motricidad', 'Dimensión Lenguaje', 'Dimensión Socioemocional']
+  },
+  {
+    label: 'Parentalidad positiva',
+    instrument: 'Escala de Parentalidad Positiva (E2P)',
+    items: ['Competencias vinculares', 'Competencias formativas', 'Competencias protectoras', 'Competencias reflexivas']
+  }
+];
 const GOAL_STATUS_LABELS = { pendiente: 'Pendiente', en_progreso: 'En progreso', logrado: 'Cumplido' };
 // Niveles de apoyo: se guardan como % en goal_progress; "Independiente" (100) cumple el objetivo
 const LEVELS = [
@@ -34,7 +119,6 @@ const patientList = $('patientList');
 const patientSearch = $('patientSearch');
 const detailEmpty = $('detailEmpty');
 const detailContent = $('detailContent');
-const goalList = $('goalList');
 const sessionList = $('sessionList');
 const tooltip = $('chartTooltip');
 
@@ -43,6 +127,9 @@ let currentPatient = null;
 let goals = [];
 let progressRows = [];
 let evaluations = [];
+let generalGoals = [];
+let editingGeneralGoalId = null;
+let editingSectionId = null;
 let unpaidByPatient = {};
 let editingEvaluationId = null;
 let sessions = [];
@@ -288,13 +375,15 @@ async function selectPatient(id, scrollIntoView = false) {
 
 async function loadPatientData() {
   const patientId = currentPatient.id;
-  const [goalsRes, sessionsRes, evaluationsRes] = await Promise.all([
+  const [generalGoalsRes, goalsRes, sessionsRes, evaluationsRes] = await Promise.all([
+    db.from('general_goals').select('*').eq('patient_id', patientId).order('position').order('created_at'),
     db.from('goals').select('*').eq('patient_id', patientId).order('created_at'),
     db.from('therapy_sessions').select('*').eq('patient_id', patientId)
       .order('session_date', { ascending: false }).order('created_at', { ascending: false }),
     db.from('evaluations').select('*').eq('patient_id', patientId).order('eval_date').order('created_at')
   ]);
   if (!currentPatient || currentPatient.id !== patientId) return; // cambió de paciente mientras cargaba
+  generalGoals = generalGoalsRes.data || [];
   goals = goalsRes.data || [];
   sessions = sessionsRes.data || [];
   evaluations = evaluationsRes.data || [];
@@ -307,6 +396,7 @@ async function loadPatientData() {
     progressRows = data || [];
   }
   renderSteps();
+  renderSections();
   renderEvaluations();
   renderGoals();
   renderProgress();
@@ -344,10 +434,6 @@ function renderProfile() {
   const notes = $('profileNotes');
   notes.textContent = p.notes || '';
   notes.hidden = !p.notes;
-
-  const generalGoal = $('generalGoalText');
-  generalGoal.textContent = p.general_goal || 'Aún no hay objetivo general. Usa “Editar” para escribirlo.';
-  generalGoal.classList.toggle('is-empty', !p.general_goal);
 }
 
 // ── Pestañas ───────────────────────────────────────────────────────────
@@ -369,10 +455,11 @@ document.querySelectorAll('.pt-tab').forEach((tab) => {
 // 3) objetivos específicos desde la sesión 3, 4) informe final
 function processSteps() {
   const p = currentPatient;
+  const c = clinical();
   const hasReport = !!p.final_report_date;
   return [
-    { title: 'Ficha clínica', detail: 'Datos del paciente', done: true, tab: 'goals', edit: true },
-    { title: 'Evaluación', detail: 'Sesiones 1 y 2', done: evaluations.length > 0, tab: 'evaluation' },
+    { title: 'Ficha clínica', detail: 'Primera sesión', done: !!(c.diagnoses || c.family || c.milestones), tab: 'ficha' },
+    { title: 'Evaluación', detail: 'Sesiones 1 y 2', done: evaluations.length > 0 || !!c.occ_diagnosis, tab: 'evaluation' },
     {
       title: 'Objetivos y avance',
       detail: goals.length ? `${goals.filter((g) => g.status === 'logrado').length}/${goals.length} cumplidos` : 'Desde la sesión 3',
@@ -404,18 +491,87 @@ function renderSteps() {
 
 $('processSteps').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-step]');
-  if (!btn) return;
-  const step = processSteps()[Number(btn.dataset.step)];
-  if (step.edit) openPatientDialog(currentPatient);
-  else showTab(step.tab);
+  if (btn) showTab(processSteps()[Number(btn.dataset.step)].tab);
+});
+
+// ── Secciones de texto de la ficha clínica y la evaluación ────────────
+function clinical() {
+  return (currentPatient && currentPatient.clinical) || {};
+}
+
+function sectionCard(id) {
+  const section = SECTIONS[id];
+  const c = clinical();
+  const filled = section.fields.filter((f) => c[f.key]);
+  const body = filled.length
+    ? filled.map((f) => `<div class="pt-section-field">
+        ${section.fields.length > 1 ? `<span class="pt-section-label">${f.label}</span>` : ''}
+        <p>${escapeHtml(c[f.key])}</p>
+      </div>`).join('')
+    : `<p class="pt-section-empty">${section.hint}</p>`;
+  return `<section class="pt-section-card">
+    <div class="pt-section-head">
+      <h4>${section.title}</h4>
+      <button type="button" class="pt-link-btn" data-section="${id}">${filled.length ? 'Editar' : 'Completar'}</button>
+    </div>
+    ${body}
+  </section>`;
+}
+
+function renderSections() {
+  const p = currentPatient;
+  const c = clinical();
+  const personal = [
+    ['Nombre', p.full_name],
+    ['Sexo', c.sex],
+    ['Edad', ageLabel(p.birth_date)],
+    ['Fecha de nacimiento', p.birth_date ? formatDate(p.birth_date) : ''],
+    ['Escolaridad', schoolingText(p)],
+    ['Persona responsable', p.guardian_name],
+    ['Lateralidad', c.laterality],
+    ['Inscripción en el RND', c.rnd],
+    ['Previsión', INSURANCE_LABELS[p.health_insurance]]
+  ].filter(([, v]) => v);
+  $('fichaSections').innerHTML = `<section class="pt-section-card">
+      <div class="pt-section-head">
+        <h4>Antecedentes personales</h4>
+        <button type="button" class="pt-link-btn" data-edit-patient>Editar</button>
+      </div>
+      <dl class="pt-profile-facts">${personal.map(([k, v]) => `<div><dt>${k}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>
+    </section>
+    ${FICHA_SECTIONS.map(sectionCard).join('')}`;
+  $('evaluationSections').innerHTML = EVALUATION_SECTIONS.map(sectionCard).join('');
+}
+
+function schoolingText(p) {
+  const school = [p.grade, p.school].filter(Boolean).join(' en el ');
+  return school && p.comuna ? `${school}, ${p.comuna}` : school;
+}
+
+['fichaSections', 'evaluationSections'].forEach((id) => {
+  $(id).addEventListener('click', (e) => {
+    if (e.target.closest('[data-edit-patient]')) openPatientDialog(currentPatient);
+    const btn = e.target.closest('[data-section]');
+    if (btn) openSectionDialog(btn.dataset.section);
+  });
 });
 
 // ── Evaluación ─────────────────────────────────────────────────────────
+function scoresTable(scores) {
+  const rows = (scores || []).filter((r) => SCORE_COLUMNS.some((col) => r[col.key]));
+  if (!rows.length) return '';
+  const columns = SCORE_COLUMNS.filter((col) => rows.some((r) => r[col.key]));
+  return `<div class="pt-report-table"><table class="pt-score-table">
+    <thead><tr>${columns.map((col) => `<th>${col.label}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map((r) => `<tr>${columns.map((col) => `<td>${escapeHtml(r[col.key] || '')}</td>`).join('')}</tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
 function renderEvaluations() {
   const list = $('evaluationList');
   if (!evaluations.length) {
-    list.innerHTML = `<div class="pt-panel-empty"><strong>Aún no hay evaluaciones</strong>
-      Registra aquí la pauta que apliques en las sesiones 1 y 2, con sus resultados y conclusiones.</div>`;
+    list.innerHTML = `<div class="pt-panel-empty"><strong>Aún no hay instrumentos registrados</strong>
+      Registra cada pauta que apliques en las sesiones 1 y 2, con sus puntajes y el análisis de resultados.</div>`;
     return;
   }
   list.innerHTML = evaluations.map((ev) => `<article class="pt-eval">
@@ -423,8 +579,10 @@ function renderEvaluations() {
         <span class="pt-session-date">${escapeHtml(ev.instrument)}</span>
         <span class="pt-goal-meta">${formatDate(ev.eval_date)}</span>
       </div>
-      ${ev.results ? `<p><span class="pt-session-label">Resultados</span><br>${escapeHtml(ev.results)}</p>` : ''}
-      ${ev.conclusions ? `<p><span class="pt-session-label">Conclusiones y áreas a intervenir</span><br>${escapeHtml(ev.conclusions)}</p>` : ''}
+      ${ev.description ? `<p class="pt-goal-desc">${escapeHtml(ev.description)}</p>` : ''}
+      ${scoresTable(ev.scores)}
+      ${ev.results ? `<p><span class="pt-session-label">Análisis de resultados</span><br>${escapeHtml(ev.results)}</p>` : ''}
+      ${ev.conclusions ? `<p><span class="pt-session-label">Conclusión</span><br>${escapeHtml(ev.conclusions)}</p>` : ''}
       <p><button type="button" class="pt-link-btn" data-id="${ev.id}">Editar</button></p>
     </article>`).join('');
 }
@@ -459,7 +617,17 @@ function levelSteps(progress) {
   </div>`;
 }
 
-function goalCard(g) {
+// Objetivos específicos agrupados bajo su objetivo general, en orden de creación
+function goalGroups() {
+  const groups = generalGoals.map((gg, i) => ({
+    gg, number: i + 1, items: goals.filter((g) => g.general_goal_id === gg.id)
+  }));
+  const orphans = goals.filter((g) => !generalGoals.some((gg) => gg.id === g.general_goal_id));
+  if (orphans.length) groups.push({ gg: null, number: null, items: orphans });
+  return groups;
+}
+
+function goalCard(g, number) {
   const area = AREAS[g.area];
   const done = g.status === 'logrado';
   const last = lastProgressDate(g.id);
@@ -481,45 +649,74 @@ function goalCard(g) {
         <span class="pt-area">${area.label}</span>
         <span class="pt-pill pt-pill-${g.status}">${GOAL_STATUS_LABELS[g.status]}</span>
       </div>
+      <span class="pt-section-label">Objetivo específico ${number}</span>
       <h3>${escapeHtml(g.title)}</h3>
-      ${g.description ? `<p class="pt-goal-desc">${escapeHtml(g.description)}</p>` : ''}
-      ${g.strategies ? `<p class="pt-goal-strategies"><span class="pt-section-label">Estrategias</span>${escapeHtml(g.strategies)}</p>` : ''}
+      ${g.description ? `<p class="pt-goal-desc"><strong>Indicador de logro:</strong> ${escapeHtml(g.description)}</p>` : ''}
       ${levelSteps(g.progress)}
       ${meta ? `<div class="pt-goal-meta">${meta}</div>` : ''}
       <div class="pt-goal-actions">${actions}</div>
     </article>`;
 }
 
-function renderGoals() {
-  const open = goals.filter((g) => g.status !== 'logrado')
-    .sort((a, b) => GOAL_STATUS_ORDER[a.status] - GOAL_STATUS_ORDER[b.status]);
-  const done = goals.filter((g) => g.status === 'logrado')
-    .sort((a, b) => (achievedDate(b.id) || '').localeCompare(achievedDate(a.id) || ''));
+function activityList(text) {
+  return (text || '').split('\n').map((line) => line.replace(/^[-•·]\s*/, '').trim()).filter(Boolean);
+}
 
-  $('goalsSummary').textContent = goals.length
-    ? `${open.length} en curso · ${done.length} ${done.length === 1 ? 'cumplido' : 'cumplidos'}`
+function renderGoals() {
+  const done = goals.filter((g) => g.status === 'logrado').length;
+  $('goalsSummary').textContent = generalGoals.length
+    ? `${generalGoals.length} ${generalGoals.length === 1 ? 'objetivo general' : 'objetivos generales'} · ${done}/${goals.length} específicos cumplidos`
     : '';
 
-  if (!goals.length) {
-    goalList.innerHTML = `<div class="pt-panel-empty"><strong>Todavía no hay objetivos específicos</strong>
-      Agrega el primero con “+ Objetivo específico”, por ejemplo “Recortar siguiendo una línea recta”.</div>`;
-  } else if (!open.length) {
-    goalList.innerHTML = `<div class="pt-panel-empty"><strong>¡Todos los objetivos específicos están cumplidos!</strong>
-      Agrega uno nuevo cuando definan el siguiente paso.</div>`;
-  } else {
-    goalList.innerHTML = open.map(goalCard).join('');
+  const list = $('generalGoalList');
+  if (!generalGoals.length && !goals.length) {
+    list.innerHTML = `<div class="pt-panel-empty"><strong>Todavía no hay objetivos</strong>
+      Empieza con “+ Objetivo general”. Dentro de cada uno podrás agregar sus objetivos específicos, estrategias y actividades.</div>`;
+    return;
   }
 
-  $('doneGoals').hidden = !done.length;
-  $('doneCount').textContent = done.length;
-  $('doneGoalList').innerHTML = done.map(goalCard).join('');
+  list.innerHTML = goalGroups().map(({ gg, number, items }) => {
+    const numbered = items.map((g, i) => ({ g, n: i + 1 }));
+    const open = numbered.filter(({ g }) => g.status !== 'logrado');
+    const closed = numbered.filter(({ g }) => g.status === 'logrado');
+    const activities = gg ? activityList(gg.activities) : [];
+    const head = gg
+      ? `<div class="pt-gg-head">
+          <div>
+            <span class="pt-section-label">Objetivo general ${number}${gg.period ? ` · Plazo: ${escapeHtml(gg.period)}` : ''}</span>
+            <h3>${escapeHtml(gg.title)}</h3>
+          </div>
+          <button type="button" class="pt-link-btn" data-action="edit-gg" data-id="${gg.id}">Editar</button>
+        </div>`
+      : `<div class="pt-gg-head"><div><span class="pt-section-label">Sin objetivo general</span>
+          <h3>Asigna estos objetivos a un objetivo general con “Editar”</h3></div></div>`;
+    const plan = gg && (gg.strategies || activities.length)
+      ? `<div class="pt-gg-plan">
+          ${gg.strategies ? `<div><span class="pt-section-label">Estrategias</span><p>${escapeHtml(gg.strategies)}</p></div>` : ''}
+          ${activities.length ? `<div><span class="pt-section-label">Actividades</span><ul>${activities.map((a) => `<li>${escapeHtml(a)}</li>`).join('')}</ul></div>` : ''}
+        </div>`
+      : '';
+    return `<section class="pt-gg">
+      ${head}
+      <div class="pt-goal-grid">
+        ${open.length ? open.map(({ g, n }) => goalCard(g, n)).join('')
+          : `<div class="pt-panel-empty">${items.length ? '¡Todos sus objetivos específicos están cumplidos!' : 'Aún no tiene objetivos específicos.'}</div>`}
+      </div>
+      ${closed.length ? `<details class="pt-done"><summary>Cumplidos (${closed.length})</summary>
+        <div class="pt-goal-grid">${closed.map(({ g, n }) => goalCard(g, n)).join('')}</div></details>` : ''}
+      ${gg ? `<button type="button" class="pt-btn pt-btn-ghost pt-btn-small pt-gg-add" data-action="new-goal" data-gg="${gg.id}">+ Objetivo específico</button>` : ''}
+      ${plan}
+    </section>`;
+  }).join('');
 }
 
 $('tab-goals').addEventListener('click', async (e) => {
   const btn = e.target.closest('button[data-action]');
   if (!btn) return;
-  const goal = goals.find((g) => g.id === btn.dataset.id);
   const action = btn.dataset.action;
+  if (action === 'edit-gg') return openGeneralGoalDialog(generalGoals.find((gg) => gg.id === btn.dataset.id));
+  if (action === 'new-goal') return openGoalDialog(null, btn.dataset.gg);
+  const goal = goals.find((g) => g.id === btn.dataset.id);
   if (action === 'progress') openProgressDialog(goal);
   if (action === 'edit') openGoalDialog(goal);
   if (action === 'complete' || action === 'reopen') {
@@ -534,6 +731,8 @@ $('tab-goals').addEventListener('click', async (e) => {
     await afterChange();
   }
 });
+
+$('newGeneralGoalBtn').addEventListener('click', () => openGeneralGoalDialog());
 
 // ── Avance (gráficos) ──────────────────────────────────────────────────
 function renderProgress() {
@@ -707,94 +906,139 @@ function renderReport() {
   renderReportDoc();
 }
 
-// Arma el informe con los datos de la ficha, la evaluación, los objetivos y las sesiones
+// Arma el informe con el mismo orden y títulos que el informe en papel de la terapeuta:
+// antecedentes, evaluación, áreas de la ocupación, diagnóstico ocupacional, modelos y objetivos.
+// Las secciones sin datos se omiten y la numeración romana se ajusta sola.
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+
 function renderReportDoc() {
   const p = currentPatient;
+  const c = clinical();
+  const text = (value) => escapeHtml(value);
+  const field = (label, value) => value ? `<p><strong>${label}:</strong> ${text(value)}</p>` : '';
+  const bullets = (lines) => lines.length ? `<ul>${lines.map((l) => `<li>${text(l)}</li>`).join('')}</ul>` : '';
+  const sections = [];
+  const add = (title, body) => { if (body.trim()) sections.push({ title, body }); };
+
+  add('Antecedentes personales', [
+    field('Nombre', p.full_name),
+    field('RUT', p.rut),
+    field('Sexo', c.sex),
+    field('Edad', ageLabel(p.birth_date)),
+    field('Fecha de nacimiento', p.birth_date ? formatDate(p.birth_date) : ''),
+    field('Escolaridad', schoolingText(p)),
+    field('Persona responsable', p.guardian_name),
+    field('Lateralidad', c.laterality),
+    field('Inscripción en el RND', c.rnd),
+    field('Previsión', INSURANCE_LABELS[p.health_insurance])
+  ].join(''));
+
+  add('Antecedentes clínicos', [
+    field('Diagnósticos', c.diagnoses || p.diagnosis),
+    field('Motivo de consulta', p.consultation_reason),
+    field('Tratamiento farmacológico', c.medication),
+    field('Otras intervenciones', c.other_interventions),
+    field('Ayudas técnicas', c.technical_aids),
+    field('Hitos en el desarrollo', c.milestones)
+  ].join(''));
+
+  add('Antecedentes familiares', c.family ? `<p>${text(c.family)}</p>` : '');
+
+  const methods = activityList(c.evaluation_methods);
+  add('Instrumentos de evaluación', [
+    bullets(evaluations.map((ev) => ev.instrument)),
+    methods.length ? `<h4 class="pt-report-sub">Métodos de evaluación</h4>${bullets(methods)}` : ''
+  ].join(''));
+
+  const observation = [
+    ['Habilidades motoras', c.obs_motor],
+    ['Habilidades de procesamiento', c.obs_processing],
+    ['Habilidades de comunicación e interacción', c.obs_communication]
+  ].filter(([, v]) => v);
+  add('Resultados de evaluación', [
+    evaluations.map((ev) => `
+      <h4>${text(ev.instrument)}</h4>
+      ${ev.description ? `<p>${text(ev.description)}</p>` : ''}
+      ${scoresTable(ev.scores)}
+      ${ev.results ? `<p>${text(ev.results)}</p>` : ''}
+      ${ev.conclusions ? `<p>${text(ev.conclusions)}</p>` : ''}`).join(''),
+    observation.length ? `<h4>Observación clínica: habilidades de desempeño</h4>
+      <ul>${observation.map(([k, v]) => `<li><strong>${k}:</strong> ${text(v)}</li>`).join('')}</ul>` : ''
+  ].join(''));
+
+  add('Áreas de la ocupación', [
+    field('AVDB', c.occ_avdb),
+    field('Escolar', c.occ_school),
+    field('Participación social', c.occ_social),
+    field('Descanso y sueño', c.occ_sleep),
+    field('Juego', c.occ_play)
+  ].join(''));
+
+  add('Diagnóstico ocupacional', c.occ_diagnosis ? `<p>${text(c.occ_diagnosis)}</p>` : '');
+
+  add('Modelos de intervención', [
+    c.practice_model ? `<h4 class="pt-report-sub">Modelo de práctica</h4><p>${text(c.practice_model)}</p>` : '',
+    c.reference_models ? `<h4 class="pt-report-sub">Modelos de referencia</h4><p>${text(c.reference_models)}</p>` : ''
+  ].join(''));
+
+  add('Objetivos de intervención', goalGroups().map(({ gg, number, items }) => {
+    const specific = items.map((g, i) => `
+      <li><strong>Objetivo específico ${i + 1}:</strong> ${text(g.title)}</li>
+      ${g.description ? `<li><em>Indicador de logro:</em> ${text(g.description)}</li>` : ''}`).join('');
+    if (!gg) return specific ? `<ul class="pt-report-dash">${specific}</ul>` : '';
+    const activities = activityList(gg.activities);
+    return `<div class="pt-report-goal">
+      <p><strong>${number}. Objetivo general:</strong> ${text(gg.title)}${gg.period ? `, en un periodo de ${text(gg.period)}` : ''}.</p>
+      ${specific ? `<ul class="pt-report-dash">${specific}</ul>` : ''}
+      ${field('Estrategias', gg.strategies)}
+      ${activities.length ? `<p><strong>Actividades:</strong></p><ul class="pt-report-dash">${activities.map((a) => `<li>${text(a)}</li>`).join('')}</ul>` : ''}
+    </div>`;
+  }).join(''));
+
+  // Resultados de la intervención: solo cuando ya hubo sesiones o registros de avance
   const ordered = [...sessions].reverse();
   const evalCount = sessions.filter((s) => s.kind === 'evaluacion').length;
-  const period = ordered.length
-    ? `${formatDate(ordered[0].session_date)} al ${formatDate(ordered[ordered.length - 1].session_date)}`
-    : 'Sin sesiones registradas';
-  const facts = [
-    ['Nombre', p.full_name],
-    ['RUT', p.rut],
-    ['Fecha de nacimiento', p.birth_date ? `${formatDate(p.birth_date)} (${ageLabel(p.birth_date)})` : ''],
-    ['Colegio', [p.school, p.grade].filter(Boolean).join(' · ')],
-    ['Previsión', INSURANCE_LABELS[p.health_insurance]],
-    ['Persona responsable', p.guardian_name],
-    ['Diagnóstico', p.diagnosis]
-  ].filter(([, v]) => v);
-  const paragraph = (text) => text ? `<p>${escapeHtml(text)}</p>` : '<p class="pt-report-empty">Sin completar.</p>';
+  const hasProgress = goals.some((g) => goalRows(g.id).length > 1);
+  if (sessions.length || hasProgress) {
+    const period = ordered.length
+      ? `Periodo de atención: ${formatDate(ordered[0].session_date)} al ${formatDate(ordered[ordered.length - 1].session_date)}. ` +
+        `Total: ${sessions.length} ${sessions.length === 1 ? 'sesión' : 'sesiones'} (${evalCount} de evaluación y ${sessions.length - evalCount} de intervención).`
+      : '';
+    const rows = goals.map((g) => {
+      const history = goalRows(g.id);
+      const achieved = g.status === 'logrado' ? achievedDate(g.id) : null;
+      return `<tr>
+        <td>${text(g.title)}</td>
+        <td>${history.length ? levelFor(history[0].progress).label : '—'}</td>
+        <td>${levelFor(g.progress).label}</td>
+        <td>${achieved ? `Cumplido el ${formatDate(achieved)}` : GOAL_STATUS_LABELS[g.status]}</td>
+      </tr>`;
+    }).join('');
+    add('Resultados de la intervención', [
+      period ? `<p>${period}</p>` : '',
+      rows ? `<div class="pt-report-table"><table>
+        <thead><tr><th>Objetivo específico</th><th>Nivel inicial</th><th>Nivel final</th><th>Estado</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>` : ''
+    ].join(''));
+  }
+
   const conclusions = $('rConclusions').value.trim();
   const recommendations = $('rRecommendations').value.trim();
+  add('Conclusiones y recomendaciones', [
+    conclusions ? `<h4 class="pt-report-sub">Conclusiones</h4><p>${text(conclusions)}</p>` : '',
+    recommendations ? `<h4 class="pt-report-sub">Recomendaciones</h4><p>${text(recommendations)}</p>` : ''
+  ].join(''));
+
   const reportDate = $('rDate').value;
-
-  const goalRowsHtml = goals.map((g) => {
-    const rows = goalRows(g.id);
-    const first = rows.length ? levelFor(rows[0].progress).label : '—';
-    const achieved = g.status === 'logrado' ? achievedDate(g.id) : null;
-    return `<tr>
-      <td>${escapeHtml(g.title)}<br><small>${AREAS[g.area].label}</small></td>
-      <td>${first}</td>
-      <td>${levelFor(g.progress).label}</td>
-      <td>${achieved ? `Cumplido el ${formatDate(achieved)}` : GOAL_STATUS_LABELS[g.status]}</td>
-    </tr>`;
-  }).join('');
-
   $('reportDoc').innerHTML = `
     <header class="pt-report-head">
-      <div>
-        <h2>Informe final de Terapia Ocupacional</h2>
-        <p>${reportDate ? formatDate(reportDate) : ''}</p>
-      </div>
-      <div class="pt-report-brand">
-        <strong>Nayareth Cifuentes Fuchslocher</strong>
-        <span>Terapeuta Ocupacional · Registro SIS N° 935279</span>
-      </div>
+      <h2>Informe de Terapia Ocupacional</h2>
+      ${reportDate ? `<p>${formatDate(reportDate)}</p>` : ''}
     </header>
-
-    <section>
-      <h3>Antecedentes</h3>
-      <dl class="pt-report-facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>
-      <h4>Motivo de consulta</h4>
-      ${paragraph(p.consultation_reason)}
-    </section>
-
-    <section>
-      <h3>Proceso terapéutico</h3>
-      <p>Periodo: ${period}. Total: ${sessions.length} ${sessions.length === 1 ? 'sesión' : 'sesiones'}
-        (${evalCount} de evaluación y ${sessions.length - evalCount} de intervención).</p>
-    </section>
-
-    <section>
-      <h3>Evaluación</h3>
-      ${evaluations.length ? evaluations.map((ev) => `
-        <h4>${escapeHtml(ev.instrument)} · ${formatDate(ev.eval_date)}</h4>
-        ${ev.results ? `<p>${escapeHtml(ev.results)}</p>` : ''}
-        ${ev.conclusions ? `<p>${escapeHtml(ev.conclusions)}</p>` : ''}`).join('') : '<p class="pt-report-empty">Sin evaluaciones registradas.</p>'}
-    </section>
-
-    <section>
-      <h3>Objetivos</h3>
-      <h4>Objetivo general</h4>
-      ${paragraph(p.general_goal)}
-      <h4>Objetivos específicos</h4>
-      ${goals.length ? `<div class="pt-report-table"><table>
-        <thead><tr><th>Objetivo</th><th>Nivel inicial</th><th>Nivel final</th><th>Estado</th></tr></thead>
-        <tbody>${goalRowsHtml}</tbody>
-      </table></div>` : '<p class="pt-report-empty">Sin objetivos específicos.</p>'}
-    </section>
-
-    <section>
-      <h3>Conclusiones</h3>
-      ${paragraph(conclusions)}
-      <h3>Recomendaciones</h3>
-      ${paragraph(recommendations)}
-    </section>
-
+    ${sections.map((s, i) => `<section><h3>${ROMAN[i]}. ${s.title}</h3>${s.body}</section>`).join('')}
     <footer class="pt-report-sign">
       <span></span>
-      Nayareth Cifuentes Fuchslocher<br>Terapeuta Ocupacional
+      Nayareth Cifuentes Fuchslocher<br>Terapeuta Ocupacional · Registro SIS N° 935279
     </footer>`;
 }
 
@@ -866,7 +1110,9 @@ function openPatientDialog(patient = null) {
     $('pStatus').value = patient.status;
     $('pDiagnosis').value = patient.diagnosis || '';
     $('pReason').value = patient.consultation_reason || '';
-    $('pGeneralGoal').value = patient.general_goal || '';
+    $('pSex').value = (patient.clinical || {}).sex || '';
+    $('pLaterality').value = (patient.clinical || {}).laterality || '';
+    $('pRnd').value = (patient.clinical || {}).rnd || '';
     $('pGuardianName').value = patient.guardian_name || '';
     $('pGuardianPhone').value = patient.guardian_phone || '';
     $('pComuna').value = patient.comuna || '';
@@ -889,10 +1135,17 @@ $('pRut').addEventListener('blur', () => {
 
 $('newPatientBtn').addEventListener('click', () => openPatientDialog());
 $('editPatientBtn').addEventListener('click', () => openPatientDialog(currentPatient));
-$('editGeneralGoalBtn').addEventListener('click', () => {
-  openPatientDialog(currentPatient);
-  $('pGeneralGoal').focus();
-});
+
+// Une valores nuevos con la ficha clínica existente; los campos vacíos se quitan
+function mergeClinical(base, values) {
+  const merged = { ...(base || {}) };
+  Object.entries(values).forEach(([key, value]) => {
+    const clean = (value ?? '').toString().trim();
+    if (clean) merged[key] = clean;
+    else delete merged[key];
+  });
+  return merged;
+}
 
 patientForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -912,12 +1165,15 @@ patientForm.addEventListener('submit', async (e) => {
     status: formData.get('status'),
     diagnosis: emptyToNull(formData.get('diagnosis')),
     consultation_reason: emptyToNull(formData.get('consultation_reason')),
-    general_goal: emptyToNull(formData.get('general_goal')),
     guardian_name: emptyToNull(formData.get('guardian_name')),
     guardian_phone: emptyToNull(formData.get('guardian_phone')),
     comuna: emptyToNull(formData.get('comuna')),
     health_insurance: emptyToNull(formData.get('health_insurance')),
-    notes: emptyToNull(formData.get('notes'))
+    notes: emptyToNull(formData.get('notes')),
+    clinical: mergeClinical(
+      editingPatientId ? patients.find((p) => p.id === editingPatientId).clinical : {},
+      { sex: formData.get('sex'), laterality: formData.get('laterality'), rnd: formData.get('rnd') }
+    )
   };
   const query = editingPatientId
     ? db.from('patients').update(payload).eq('id', editingPatientId).select().single()
@@ -961,33 +1217,34 @@ $('gArea').innerHTML = Object.entries(AREAS).map(([value, area]) =>
   `<option value="${value}">${area.label}</option>`
 ).join('');
 
-function openGoalDialog(goal = null) {
+function openGoalDialog(goal = null, generalGoalId = null) {
   editingGoalId = goal ? goal.id : null;
   goalForm.reset();
   $('goalFormNote').textContent = '';
   $('goalDialogTitle').textContent = goal ? 'Editar objetivo específico' : 'Nuevo objetivo específico';
   $('deleteGoalBtn').hidden = !goal;
+  $('gGeneral').innerHTML = generalGoals.map((gg, i) =>
+    `<option value="${gg.id}">${i + 1}. ${escapeHtml(gg.title)}</option>`
+  ).join('');
+  $('gGeneral').value = goal ? (goal.general_goal_id || '') : (generalGoalId || '');
   if (goal) {
     $('gTitle').value = goal.title;
     $('gArea').value = goal.area;
     $('gTargetDate').value = goal.target_date || '';
     $('gDescription').value = goal.description || '';
-    $('gStrategies').value = goal.strategies || '';
   }
   $('goalDialog').showModal();
 }
-
-$('newGoalBtn').addEventListener('click', () => openGoalDialog());
 
 goalForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const formData = new FormData(goalForm);
   const payload = {
+    general_goal_id: formData.get('general_goal_id'),
     title: formData.get('title').trim(),
     area: formData.get('area'),
     target_date: emptyToNull(formData.get('target_date')),
-    description: emptyToNull(formData.get('description')),
-    strategies: emptyToNull(formData.get('strategies'))
+    description: emptyToNull(formData.get('description'))
   };
 
   if (editingGoalId) {
@@ -1102,18 +1359,63 @@ $('deleteSessionBtn').addEventListener('click', async () => {
 // ── Ventana: evaluación ────────────────────────────────────────────────
 const evaluationForm = $('evaluationForm');
 
+const scoreRows = $('scoreRows');
+
+function scoreRowHtml(row = {}) {
+  return `<div class="pt-score-row">
+    ${SCORE_COLUMNS.map((col) => `<input type="text" data-k="${col.key}" maxlength="120"
+      value="${escapeHtml(row[col.key] || '')}" placeholder="${col.label}" aria-label="${col.label}">`).join('')}
+    <button type="button" class="pt-score-del" aria-label="Quitar fila">×</button>
+  </div>`;
+}
+
+function setScoreRows(rows) {
+  const list = rows.length ? rows : [{}, {}, {}];
+  scoreRows.innerHTML = list.map(scoreRowHtml).join('');
+}
+
+function readScoreRows() {
+  return [...scoreRows.querySelectorAll('.pt-score-row')].map((rowEl) => {
+    const row = {};
+    rowEl.querySelectorAll('input').forEach((input) => {
+      if (input.value.trim()) row[input.dataset.k] = input.value.trim();
+    });
+    return row;
+  }).filter((row) => Object.keys(row).length);
+}
+
+$('scorePresets').innerHTML = '<span class="pt-quick-label">Rellenar con:</span>' +
+  SCORE_PRESETS.map((preset, i) => `<button type="button" data-preset="${i}">${preset.label}</button>`).join('');
+$('scorePresets').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-preset]');
+  if (!btn) return;
+  const preset = SCORE_PRESETS[Number(btn.dataset.preset)];
+  if (!$('eInstrument').value.trim()) $('eInstrument').value = preset.instrument;
+  // Mantiene lo ya escrito y agrega las filas del instrumento que falten
+  const current = readScoreRows();
+  const missing = preset.items.filter((item) => !current.some((r) => r.item === item)).map((item) => ({ item }));
+  setScoreRows([...current, ...missing]);
+});
+$('addScoreRowBtn').addEventListener('click', () => scoreRows.insertAdjacentHTML('beforeend', scoreRowHtml()));
+scoreRows.addEventListener('click', (e) => {
+  const del = e.target.closest('.pt-score-del');
+  if (del) del.closest('.pt-score-row').remove();
+});
+
 function openEvaluationDialog(evaluation = null) {
   editingEvaluationId = evaluation ? evaluation.id : null;
   evaluationForm.reset();
   $('evaluationFormNote').textContent = '';
-  $('evaluationDialogTitle').textContent = evaluation ? 'Editar evaluación' : 'Registrar evaluación';
+  $('evaluationDialogTitle').textContent = evaluation ? 'Editar instrumento' : 'Registrar instrumento';
   $('deleteEvaluationBtn').hidden = !evaluation;
   $('eDate').value = evaluation ? evaluation.eval_date : todayIso();
   if (evaluation) {
     $('eInstrument').value = evaluation.instrument;
+    $('eDescription').value = evaluation.description || '';
     $('eResults').value = evaluation.results || '';
     $('eConclusions').value = evaluation.conclusions || '';
   }
+  setScoreRows(evaluation ? (evaluation.scores || []) : []);
   $('evaluationDialog').showModal();
 }
 
@@ -1125,6 +1427,8 @@ evaluationForm.addEventListener('submit', async (e) => {
   const payload = {
     instrument: formData.get('instrument').trim(),
     eval_date: formData.get('eval_date'),
+    description: emptyToNull(formData.get('description')),
+    scores: readScoreRows(),
     results: emptyToNull(formData.get('results')),
     conclusions: emptyToNull(formData.get('conclusions'))
   };
@@ -1139,11 +1443,92 @@ evaluationForm.addEventListener('submit', async (e) => {
 $('deleteEvaluationBtn').addEventListener('click', async () => {
   const evaluation = evaluations.find((ev) => ev.id === editingEvaluationId);
   $('evaluationDialog').close();
-  const ok = await askConfirm('¿Eliminar esta evaluación?', `Se borrará “${evaluation.instrument}” del ${formatDate(evaluation.eval_date)}.`);
+  const ok = await askConfirm('¿Eliminar este instrumento?', `Se borrará “${evaluation.instrument}” del ${formatDate(evaluation.eval_date)}.`);
   if (!ok) return;
   const { error } = await db.from('evaluations').delete().eq('id', evaluation.id);
   if (error) { console.error(error); return; }
   await afterChange();
+});
+
+// ── Ventana: objetivo general ──────────────────────────────────────────
+const generalGoalForm = $('generalGoalForm');
+
+function openGeneralGoalDialog(generalGoal = null) {
+  editingGeneralGoalId = generalGoal ? generalGoal.id : null;
+  generalGoalForm.reset();
+  $('generalGoalFormNote').textContent = '';
+  $('generalGoalDialogTitle').textContent = generalGoal ? 'Editar objetivo general' : 'Nuevo objetivo general';
+  $('deleteGeneralGoalBtn').hidden = !generalGoal;
+  if (generalGoal) {
+    $('ggTitle').value = generalGoal.title;
+    $('ggPeriod').value = generalGoal.period || '';
+    $('ggStrategies').value = generalGoal.strategies || '';
+    $('ggActivities').value = generalGoal.activities || '';
+  }
+  $('generalGoalDialog').showModal();
+}
+
+generalGoalForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(generalGoalForm);
+  const payload = {
+    title: formData.get('title').trim(),
+    period: emptyToNull(formData.get('period')),
+    strategies: emptyToNull(formData.get('strategies')),
+    activities: emptyToNull(formData.get('activities'))
+  };
+  const { error } = editingGeneralGoalId
+    ? await db.from('general_goals').update(payload).eq('id', editingGeneralGoalId)
+    : await db.from('general_goals').insert({ ...payload, patient_id: currentPatient.id, position: generalGoals.length });
+  if (error) return showError($('generalGoalFormNote'), error);
+  $('generalGoalDialog').close();
+  await afterChange();
+});
+
+$('deleteGeneralGoalBtn').addEventListener('click', async () => {
+  const generalGoal = generalGoals.find((gg) => gg.id === editingGeneralGoalId);
+  const count = goals.filter((g) => g.general_goal_id === generalGoal.id).length;
+  $('generalGoalDialog').close();
+  const ok = await askConfirm(
+    '¿Eliminar este objetivo general?',
+    count
+      ? `Sus ${count} objetivos específicos no se borran: quedarán como “Sin objetivo general” para que los asignes a otro.`
+      : `Se borrará “${generalGoal.title}”.`
+  );
+  if (!ok) return;
+  const { error } = await db.from('general_goals').delete().eq('id', generalGoal.id);
+  if (error) { console.error(error); return; }
+  await afterChange();
+});
+
+// ── Ventana: secciones de la ficha clínica y la evaluación ────────────
+const sectionForm = $('sectionForm');
+
+function openSectionDialog(id) {
+  editingSectionId = id;
+  const section = SECTIONS[id];
+  const c = clinical();
+  $('sectionDialogTitle').textContent = section.title;
+  $('sectionFormNote').textContent = '';
+  $('sectionFields').innerHTML = section.fields.map((f) => `
+    <label for="sec-${f.key}">${f.label}
+      <textarea id="sec-${f.key}" name="${f.key}" rows="${f.rows}" maxlength="6000">${escapeHtml(c[f.key] || '')}</textarea>
+    </label>`).join('');
+  $('sectionDialog').showModal();
+}
+
+sectionForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const values = Object.fromEntries(new FormData(sectionForm).entries());
+  const { data, error } = await db.from('patients')
+    .update({ clinical: mergeClinical(currentPatient.clinical, values) })
+    .eq('id', currentPatient.id).select().single();
+  if (error) return showError($('sectionFormNote'), error);
+  Object.assign(currentPatient, data);
+  $('sectionDialog').close();
+  renderSteps();
+  renderSections();
+  renderReportDoc();
 });
 
 // ── Inicio ─────────────────────────────────────────────────────────────
