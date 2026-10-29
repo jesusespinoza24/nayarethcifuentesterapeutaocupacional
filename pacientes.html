@@ -51,7 +51,7 @@
     <div class="pt-stats">
       <div class="pt-stat pt-stat-blue"><span class="pt-stat-value" id="statPatients">0</span><span class="pt-stat-label">Pacientes activos</span></div>
       <div class="pt-stat pt-stat-orange"><span class="pt-stat-value" id="statInProgress">0</span><span class="pt-stat-label">Objetivos en progreso</span></div>
-      <div class="pt-stat pt-stat-teal"><span class="pt-stat-value" id="statAchieved">0</span><span class="pt-stat-label">Objetivos logrados</span></div>
+      <div class="pt-stat pt-stat-teal"><span class="pt-stat-value" id="statAchieved">0</span><span class="pt-stat-label">Objetivos cumplidos</span></div>
       <div class="pt-stat pt-stat-pink"><span class="pt-stat-value" id="statSessions">0</span><span class="pt-stat-label">Sesiones este mes</span></div>
     </div>
 
@@ -99,11 +99,25 @@
           </div>
 
           <div class="pt-tab-panel" id="tab-goals" role="tabpanel">
+            <div class="pt-general-goal">
+              <div class="pt-general-goal-head">
+                <span class="pt-section-label">Objetivo general</span>
+                <button type="button" class="pt-link-btn" id="editGeneralGoalBtn">Editar</button>
+              </div>
+              <p id="generalGoalText"></p>
+            </div>
             <div class="pt-panel-head">
-              <p class="pt-panel-summary" id="goalsSummary"></p>
-              <button type="button" class="pt-btn pt-btn-primary pt-btn-small" id="newGoalBtn">+ Nuevo objetivo</button>
+              <div>
+                <h3 class="pt-panel-title">Objetivos específicos</h3>
+                <p class="pt-panel-summary" id="goalsSummary"></p>
+              </div>
+              <button type="button" class="pt-btn pt-btn-primary pt-btn-small" id="newGoalBtn">+ Objetivo específico</button>
             </div>
             <div class="pt-goal-grid" id="goalList"></div>
+            <details class="pt-done" id="doneGoals" hidden>
+              <summary>Cumplidos (<span id="doneCount">0</span>)</summary>
+              <div class="pt-goal-grid" id="doneGoalList"></div>
+            </details>
           </div>
 
           <div class="pt-tab-panel" id="tab-progress" role="tabpanel" hidden>
@@ -150,8 +164,11 @@
         <input type="text" id="pGrade" name="grade" maxlength="60" placeholder="Ej.: 2° básico">
       </label>
     </div>
-    <label for="pDiagnosis">Diagnóstico o motivo de consulta
+    <label for="pDiagnosis">Diagnóstico
       <input type="text" id="pDiagnosis" name="diagnosis" maxlength="300">
+    </label>
+    <label for="pReason">Motivo de consulta
+      <textarea id="pReason" name="consultation_reason" rows="2" maxlength="1000"></textarea>
     </label>
     <div class="pt-form-row">
       <label for="pGuardianName">Persona responsable
@@ -173,6 +190,9 @@
         </select>
       </label>
     </div>
+    <label for="pGeneralGoal">Objetivo general
+      <textarea id="pGeneralGoal" name="general_goal" rows="3" maxlength="1000" placeholder="Ej.: Favorecer su autonomía en las actividades de la vida diaria en el hogar y el colegio"></textarea>
+    </label>
     <label for="pNotes">Notas generales
       <textarea id="pNotes" name="notes" rows="3" maxlength="2000"></textarea>
     </label>
@@ -188,8 +208,8 @@
 
 <dialog class="pt-dialog" id="goalDialog">
   <form method="dialog" class="pt-form" id="goalForm">
-    <h2 id="goalDialogTitle">Nuevo objetivo</h2>
-    <label for="gTitle">Objetivo
+    <h2 id="goalDialogTitle">Nuevo objetivo específico</h2>
+    <label for="gTitle">Objetivo específico
       <input type="text" id="gTitle" name="title" minlength="2" maxlength="200" required placeholder="Ej.: Abotonar su chaqueta sin ayuda">
     </label>
     <div class="pt-form-row">
@@ -201,11 +221,14 @@
       </label>
     </div>
     <label for="gDescription">Cómo se medirá (opcional)
-      <textarea id="gDescription" name="description" rows="3" maxlength="1000" placeholder="Ej.: 4 de 5 intentos durante la sesión"></textarea>
+      <textarea id="gDescription" name="description" rows="2" maxlength="1000" placeholder="Ej.: 4 de 5 intentos durante la sesión"></textarea>
+    </label>
+    <label for="gStrategies">Estrategias
+      <textarea id="gStrategies" name="strategies" rows="3" maxlength="2000" placeholder="Ej.: Práctica con tablero de botones grandes, modelado, apoyo visual con secuencia de pasos"></textarea>
     </label>
     <p class="pt-note pt-note-error" id="goalFormNote" role="alert"></p>
     <div class="pt-dialog-actions">
-      <button type="button" class="pt-btn pt-btn-danger-ghost" id="deleteGoalBtn" hidden>Eliminar objetivo</button>
+      <button type="button" class="pt-btn pt-btn-danger-ghost" id="deleteGoalBtn" hidden>Eliminar</button>
       <span class="pt-spacer"></span>
       <button type="button" class="pt-btn pt-btn-ghost" data-close>Cancelar</button>
       <button type="submit" class="pt-btn pt-btn-primary">Guardar</button>
@@ -217,15 +240,11 @@
   <form method="dialog" class="pt-form" id="progressForm">
     <h2>Registrar avance</h2>
     <p class="pt-dialog-sub" id="progressGoalTitle"></p>
-    <label for="prValue">Logro actual: <strong id="prValueLabel">0%</strong>
-      <input type="range" id="prValue" name="progress" min="0" max="100" step="5" value="0">
-    </label>
-    <div class="pt-quick" role="group" aria-label="Valores rápidos">
-      <button type="button" data-value="25">25%</button>
-      <button type="button" data-value="50">50%</button>
-      <button type="button" data-value="75">75%</button>
-      <button type="button" data-value="100">¡Logrado!</button>
-    </div>
+    <fieldset class="pt-levels">
+      <legend>¿Cómo lo logra hoy?</legend>
+      <div class="pt-levels-options" id="prLevels"></div>
+      <p class="pt-levels-hint">Al marcar <strong>Independiente</strong>, el objetivo queda cumplido.</p>
+    </fieldset>
     <label for="prDate">Fecha
       <input type="date" id="prDate" name="recorded_on" required>
     </label>

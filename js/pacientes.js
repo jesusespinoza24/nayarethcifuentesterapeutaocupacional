@@ -7,7 +7,15 @@ const AREAS = {
   social_conducta: { label: 'Social y conducta', color: '#b08800' }
 };
 const PATIENT_STATUS_LABELS = { activo: 'Activo', pausa: 'En pausa', alta: 'Alta' };
-const GOAL_STATUS_LABELS = { pendiente: 'Pendiente', en_progreso: 'En progreso', logrado: 'Logrado' };
+const GOAL_STATUS_LABELS = { pendiente: 'Pendiente', en_progreso: 'En progreso', logrado: 'Cumplido' };
+// Niveles de apoyo: se guardan como % en goal_progress; "Independiente" (100) cumple el objetivo
+const LEVELS = [
+  { value: 0, label: 'No lo logra aún', short: 'No logra' },
+  { value: 25, label: 'Con ayuda física', short: 'Ayuda física' },
+  { value: 50, label: 'Con ayuda verbal o visual', short: 'Ayuda verbal' },
+  { value: 75, label: 'Con supervisión', short: 'Supervisión' },
+  { value: 100, label: 'Independiente', short: 'Independiente' }
+];
 const GOAL_STATUS_ORDER = { en_progreso: 0, pendiente: 1, logrado: 2 };
 const AVATAR_COLORS = ['#4361ee', '#e8590c', '#0f9d8a', '#c2255c', '#7048e8', '#b08800'];
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -109,6 +117,16 @@ function isValidRut(rut) {
   const expected = 11 - (sum % 11);
   const dv = expected === 11 ? '0' : expected === 10 ? 'K' : String(expected);
   return dv === clean.slice(-1);
+}
+
+function levelIndex(progress) {
+  let index = 0;
+  LEVELS.forEach((level, i) => { if (progress >= level.value) index = i; });
+  return index;
+}
+
+function levelFor(progress) {
+  return LEVELS[levelIndex(progress)];
 }
 
 function emptyToNull(value) {
@@ -289,6 +307,7 @@ function renderProfile() {
     ['Colegio', p.school],
     ['Curso', p.grade],
     ['Diagnóstico', p.diagnosis],
+    ['Motivo de consulta', p.consultation_reason],
     ['Persona responsable', p.guardian_name],
     ['Teléfono', p.guardian_phone],
     ['Comuna', p.comuna],
@@ -301,6 +320,10 @@ function renderProfile() {
   const notes = $('profileNotes');
   notes.textContent = p.notes || '';
   notes.hidden = !p.notes;
+
+  const generalGoal = $('generalGoalText');
+  generalGoal.textContent = p.general_goal || 'Aún no hay objetivo general. Usa “Editar” para escribirlo.';
+  generalGoal.classList.toggle('is-empty', !p.general_goal);
 }
 
 // ── Pestañas ───────────────────────────────────────────────────────────
@@ -316,57 +339,104 @@ document.querySelectorAll('.pt-tab').forEach((tab) => {
 });
 
 // ── Objetivos ──────────────────────────────────────────────────────────
+function goalRows(goalId) {
+  return progressRows.filter((r) => r.goal_id === goalId);
+}
+
 function lastProgressDate(goalId) {
-  const rows = progressRows.filter((r) => r.goal_id === goalId);
+  const rows = goalRows(goalId);
   return rows.length ? rows[rows.length - 1].recorded_on : null;
 }
 
-function renderGoals() {
-  const achieved = goals.filter((g) => g.status === 'logrado').length;
-  $('goalsSummary').textContent = goals.length
-    ? `${goals.length} ${goals.length === 1 ? 'objetivo' : 'objetivos'} · ${achieved} ${achieved === 1 ? 'logrado' : 'logrados'}`
-    : '';
+// Fecha del último registro en "Independiente", o sea, cuándo se cumplió
+function achievedDate(goalId) {
+  const rows = goalRows(goalId).filter((r) => r.progress >= 100);
+  return rows.length ? rows[rows.length - 1].recorded_on : null;
+}
 
-  if (!goals.length) {
-    goalList.innerHTML = `<div class="pt-panel-empty"><strong>Todavía no hay objetivos</strong>
-      Agrega el primero con “+ Nuevo objetivo”, por ejemplo “Recortar siguiendo una línea recta”.</div>`;
-    return;
-  }
+function levelSteps(progress) {
+  const current = levelIndex(progress);
+  const steps = LEVELS.map((_, i) => `<span class="${i <= current ? 'on' : ''}"></span>`).join('');
+  return `<div class="pt-level">
+    <div class="pt-level-steps" aria-hidden="true">${steps}</div>
+    <span class="pt-level-label">${levelFor(progress).label}</span>
+  </div>`;
+}
 
-  const sorted = [...goals].sort((a, b) => GOAL_STATUS_ORDER[a.status] - GOAL_STATUS_ORDER[b.status]);
-  goalList.innerHTML = sorted.map((g) => {
-    const area = AREAS[g.area];
-    const last = lastProgressDate(g.id);
-    const meta = [
+function goalCard(g) {
+  const area = AREAS[g.area];
+  const done = g.status === 'logrado';
+  const last = lastProgressDate(g.id);
+  const achieved = done ? achievedDate(g.id) : null;
+  const meta = done
+    ? (achieved ? `Cumplido el ${formatDate(achieved)}` : '')
+    : [
       g.target_date ? `Meta: ${formatDate(g.target_date)}` : '',
       last ? `Último registro: ${formatDate(last)}` : ''
     ].filter(Boolean).join(' · ');
-    return `<article class="pt-goal${g.status === 'logrado' ? ' is-done' : ''}" style="--area:${area.color}">
+  const actions = done
+    ? `<button type="button" class="pt-btn pt-btn-ghost pt-btn-small" data-action="reopen" data-id="${g.id}">Reabrir</button>
+       <button type="button" class="pt-btn pt-btn-ghost pt-btn-small" data-action="edit" data-id="${g.id}">Editar</button>`
+    : `<button type="button" class="pt-btn pt-btn-primary pt-btn-small" data-action="progress" data-id="${g.id}">Registrar avance</button>
+       <button type="button" class="pt-btn pt-btn-done pt-btn-small" data-action="complete" data-id="${g.id}">Marcar como cumplido</button>
+       <button type="button" class="pt-btn pt-btn-ghost pt-btn-small" data-action="edit" data-id="${g.id}">Editar</button>`;
+  return `<article class="pt-goal${done ? ' is-done' : ''}" style="--area:${area.color}">
       <div class="pt-goal-top">
         <span class="pt-area">${area.label}</span>
         <span class="pt-pill pt-pill-${g.status}">${GOAL_STATUS_LABELS[g.status]}</span>
       </div>
       <h3>${escapeHtml(g.title)}</h3>
       ${g.description ? `<p class="pt-goal-desc">${escapeHtml(g.description)}</p>` : ''}
-      <div class="pt-goal-progress">
-        <div class="pt-bar" role="progressbar" aria-valuenow="${g.progress}" aria-valuemin="0" aria-valuemax="100" aria-label="Logro del objetivo"><span style="width:${g.progress}%"></span></div>
-        <span class="pt-goal-pct">${g.progress}%</span>
-      </div>
+      ${g.strategies ? `<p class="pt-goal-strategies"><span class="pt-section-label">Estrategias</span>${escapeHtml(g.strategies)}</p>` : ''}
+      ${levelSteps(g.progress)}
       ${meta ? `<div class="pt-goal-meta">${meta}</div>` : ''}
-      <div class="pt-goal-actions">
-        <button type="button" class="pt-btn pt-btn-primary pt-btn-small" data-action="progress" data-id="${g.id}">Registrar avance</button>
-        <button type="button" class="pt-btn pt-btn-ghost pt-btn-small" data-action="edit" data-id="${g.id}">Editar</button>
-      </div>
+      <div class="pt-goal-actions">${actions}</div>
     </article>`;
-  }).join('');
 }
 
-goalList.addEventListener('click', (e) => {
+function renderGoals() {
+  const open = goals.filter((g) => g.status !== 'logrado')
+    .sort((a, b) => GOAL_STATUS_ORDER[a.status] - GOAL_STATUS_ORDER[b.status]);
+  const done = goals.filter((g) => g.status === 'logrado')
+    .sort((a, b) => (achievedDate(b.id) || '').localeCompare(achievedDate(a.id) || ''));
+
+  $('goalsSummary').textContent = goals.length
+    ? `${open.length} en curso · ${done.length} ${done.length === 1 ? 'cumplido' : 'cumplidos'}`
+    : '';
+
+  if (!goals.length) {
+    goalList.innerHTML = `<div class="pt-panel-empty"><strong>Todavía no hay objetivos específicos</strong>
+      Agrega el primero con “+ Objetivo específico”, por ejemplo “Recortar siguiendo una línea recta”.</div>`;
+  } else if (!open.length) {
+    goalList.innerHTML = `<div class="pt-panel-empty"><strong>¡Todos los objetivos específicos están cumplidos!</strong>
+      Agrega uno nuevo cuando definan el siguiente paso.</div>`;
+  } else {
+    goalList.innerHTML = open.map(goalCard).join('');
+  }
+
+  $('doneGoals').hidden = !done.length;
+  $('doneCount').textContent = done.length;
+  $('doneGoalList').innerHTML = done.map(goalCard).join('');
+}
+
+$('tab-goals').addEventListener('click', async (e) => {
   const btn = e.target.closest('button[data-action]');
   if (!btn) return;
   const goal = goals.find((g) => g.id === btn.dataset.id);
-  if (btn.dataset.action === 'progress') openProgressDialog(goal);
-  if (btn.dataset.action === 'edit') openGoalDialog(goal);
+  const action = btn.dataset.action;
+  if (action === 'progress') openProgressDialog(goal);
+  if (action === 'edit') openGoalDialog(goal);
+  if (action === 'complete' || action === 'reopen') {
+    btn.disabled = true;
+    // Al reabrir se vuelve al último nivel registrado antes de cumplirlo
+    const before = goalRows(goal.id).filter((r) => r.progress < 100);
+    const row = action === 'complete'
+      ? { progress: 100, note: 'Marcado como cumplido' }
+      : { progress: before.length ? before[before.length - 1].progress : 0, note: 'Objetivo reabierto' };
+    const { error } = await db.from('goal_progress').insert({ goal_id: goal.id, recorded_on: todayIso(), ...row });
+    if (error) { console.error(error); btn.disabled = false; return; }
+    await afterChange();
+  }
 });
 
 // ── Avance (gráficos) ──────────────────────────────────────────────────
@@ -380,27 +450,32 @@ function renderProgress() {
     return;
   }
 
-  const average = Math.round(goals.reduce((sum, g) => sum + g.progress, 0) / goals.length);
+  const done = goals.filter((g) => g.status === 'logrado').length;
+  const share = Math.round((done / goals.length) * 100);
   overall.hidden = false;
   overall.innerHTML = `
-    <span class="pt-overall-value">${average}%</span>
-    <span class="pt-overall-label">Logro promedio de ${goals.length} ${goals.length === 1 ? 'objetivo' : 'objetivos'}</span>
-    <div class="pt-bar" role="progressbar" aria-valuenow="${average}" aria-valuemin="0" aria-valuemax="100" aria-label="Logro promedio"><span style="width:${average}%; background: var(--blue)"></span></div>`;
+    <span class="pt-overall-value">${done}/${goals.length}</span>
+    <span class="pt-overall-label">objetivos específicos cumplidos</span>
+    <div class="pt-bar" role="progressbar" aria-valuenow="${share}" aria-valuemin="0" aria-valuemax="100" aria-label="Objetivos cumplidos"><span style="width:${share}%; background: var(--teal)"></span></div>`;
 
   charts.innerHTML = goals.map((g) => {
-    const rows = progressRows.filter((r) => r.goal_id === g.id);
+    const rows = goalRows(g.id);
     const area = AREAS[g.area];
+    const achieved = g.status === 'logrado' ? achievedDate(g.id) : null;
     const history = rows.length ? `<details>
         <summary>Ver historial (${rows.length})</summary>
         <table class="pt-history">
-          <thead><tr><th>Fecha</th><th>Logro</th><th>Nota</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Nivel</th><th>Nota</th></tr></thead>
           <tbody>${[...rows].reverse().map((r) =>
-            `<tr><td>${formatDate(r.recorded_on)}</td><td>${r.progress}%</td><td>${escapeHtml(r.note || '')}</td></tr>`
+            `<tr><td>${formatDate(r.recorded_on)}</td><td>${levelFor(r.progress).label}</td><td>${escapeHtml(r.note || '')}</td></tr>`
           ).join('')}</tbody>
         </table>
       </details>` : '';
     return `<div class="pt-chart-card" style="--area:${area.color}">
-      <span class="pt-area">${area.label}</span>
+      <div class="pt-goal-top">
+        <span class="pt-area">${area.label}</span>
+        ${achieved ? `<span class="pt-pill pt-pill-logrado">Cumplido el ${formatDate(achieved)}</span>` : ''}
+      </div>
       <h3>${escapeHtml(g.title)}</h3>
       ${progressChart(rows, area.color)}
       ${history}
@@ -408,15 +483,15 @@ function renderProgress() {
   }).join('');
 }
 
-// Línea de % de logro en el tiempo (eje 0–100 %, fechas en el eje x)
+// Nivel de apoyo en el tiempo (de "No logra" a "Independiente", fechas en el eje x)
 function progressChart(rows, color) {
-  const W = 420, H = 160, L = 36, R = 44, T = 12, B = 26;
+  const W = 420, H = 170, L = 98, R = 16, T = 10, B = 26;
   const plotW = W - L - R, plotH = H - T - B;
-  const y = (v) => T + plotH - (v / 100) * plotH;
+  const y = (index) => T + plotH - (index / (LEVELS.length - 1)) * plotH;
 
-  const grid = [0, 50, 100].map((v) =>
-    `<line class="grid-line" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"></line>
-     <text class="axis-label" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}%</text>`
+  const grid = LEVELS.map((level, i) =>
+    `<line class="grid-line" x1="${L}" x2="${W - R}" y1="${y(i)}" y2="${y(i)}"></line>
+     <text class="axis-label" x="${L - 8}" y="${y(i) + 4}" text-anchor="end">${level.short}</text>`
   ).join('');
 
   if (!rows.length) {
@@ -427,29 +502,29 @@ function progressChart(rows, color) {
   const times = rows.map((r) => new Date(r.recorded_on + 'T12:00:00').getTime());
   const minT = Math.min(...times), maxT = Math.max(...times);
   const x = (t) => maxT === minT ? L + plotW / 2 : L + ((t - minT) / (maxT - minT)) * plotW;
-  const points = rows.map((r, i) => ({ x: x(times[i]), y: y(r.progress), row: r }));
+  const points = rows.map((r, i) => ({ x: x(times[i]), y: y(levelIndex(r.progress)), row: r }));
 
   const line = points.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
   const area = `${line} L${points[points.length - 1].x.toFixed(1)},${y(0)} L${points[0].x.toFixed(1)},${y(0)} Z`;
-  const last = points[points.length - 1];
 
   const xLabels = minT === maxT
     ? `<text class="axis-label" x="${x(minT)}" y="${H - 6}" text-anchor="middle">${formatDate(rows[0].recorded_on)}</text>`
     : `<text class="axis-label" x="${L}" y="${H - 6}" text-anchor="start">${formatDate(rows[0].recorded_on)}</text>
        <text class="axis-label" x="${W - R}" y="${H - 6}" text-anchor="end">${formatDate(rows[rows.length - 1].recorded_on)}</text>`;
 
-  const dots = points.map((p) => `
-    <circle cx="${p.x}" cy="${p.y}" r="4" fill="${color}" stroke="#ffffff" stroke-width="2"></circle>
+  const dots = points.map((p, i) => {
+    const isLast = i === points.length - 1;
+    return `
+    <circle cx="${p.x}" cy="${p.y}" r="${isLast ? 6 : 4}" fill="${color}" stroke="#ffffff" stroke-width="2"></circle>
     <circle class="hit" cx="${p.x}" cy="${p.y}" r="12"
-      data-date="${p.row.recorded_on}" data-value="${p.row.progress}" data-note="${escapeHtml(p.row.note || '')}"></circle>`
-  ).join('');
+      data-date="${p.row.recorded_on}" data-level="${levelFor(p.row.progress).label}" data-note="${escapeHtml(p.row.note || '')}"></circle>`;
+  }).join('');
 
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Avance: ${rows.map((r) => `${formatDate(r.recorded_on)} ${r.progress}%`).join(', ')}">
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Avance: ${rows.map((r) => `${formatDate(r.recorded_on)} ${levelFor(r.progress).label}`).join(', ')}">
     ${grid}
     <path d="${area}" fill="${color}" fill-opacity="0.12"></path>
     <path d="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>
     ${dots}
-    <text class="end-label" x="${last.x + 9}" y="${last.y + 4}">${last.row.progress}%</text>
     ${xLabels}
   </svg>`;
 }
@@ -458,7 +533,7 @@ $('progressCharts').addEventListener('mouseover', (e) => {
   const hit = e.target.closest('.hit');
   if (!hit) return;
   const note = hit.dataset.note ? `<br>${hit.dataset.note}` : '';
-  tooltip.innerHTML = `<strong>${hit.dataset.value}%</strong>${formatDate(hit.dataset.date)}${note}`;
+  tooltip.innerHTML = `<strong>${hit.dataset.level}</strong>${formatDate(hit.dataset.date)}${note}`;
   tooltip.hidden = false;
 });
 $('progressCharts').addEventListener('mousemove', (e) => {
@@ -543,6 +618,8 @@ function openPatientDialog(patient = null) {
     $('pBirthDate').value = patient.birth_date || '';
     $('pStatus').value = patient.status;
     $('pDiagnosis').value = patient.diagnosis || '';
+    $('pReason').value = patient.consultation_reason || '';
+    $('pGeneralGoal').value = patient.general_goal || '';
     $('pGuardianName').value = patient.guardian_name || '';
     $('pGuardianPhone').value = patient.guardian_phone || '';
     $('pComuna').value = patient.comuna || '';
@@ -564,6 +641,10 @@ $('pRut').addEventListener('blur', () => {
 
 $('newPatientBtn').addEventListener('click', () => openPatientDialog());
 $('editPatientBtn').addEventListener('click', () => openPatientDialog(currentPatient));
+$('editGeneralGoalBtn').addEventListener('click', () => {
+  openPatientDialog(currentPatient);
+  $('pGeneralGoal').focus();
+});
 
 patientForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -582,6 +663,8 @@ patientForm.addEventListener('submit', async (e) => {
     birth_date: emptyToNull(formData.get('birth_date')),
     status: formData.get('status'),
     diagnosis: emptyToNull(formData.get('diagnosis')),
+    consultation_reason: emptyToNull(formData.get('consultation_reason')),
+    general_goal: emptyToNull(formData.get('general_goal')),
     guardian_name: emptyToNull(formData.get('guardian_name')),
     guardian_phone: emptyToNull(formData.get('guardian_phone')),
     comuna: emptyToNull(formData.get('comuna')),
@@ -633,13 +716,14 @@ function openGoalDialog(goal = null) {
   editingGoalId = goal ? goal.id : null;
   goalForm.reset();
   $('goalFormNote').textContent = '';
-  $('goalDialogTitle').textContent = goal ? 'Editar objetivo' : 'Nuevo objetivo';
+  $('goalDialogTitle').textContent = goal ? 'Editar objetivo específico' : 'Nuevo objetivo específico';
   $('deleteGoalBtn').hidden = !goal;
   if (goal) {
     $('gTitle').value = goal.title;
     $('gArea').value = goal.area;
     $('gTargetDate').value = goal.target_date || '';
     $('gDescription').value = goal.description || '';
+    $('gStrategies').value = goal.strategies || '';
   }
   $('goalDialog').showModal();
 }
@@ -653,7 +737,8 @@ goalForm.addEventListener('submit', async (e) => {
     title: formData.get('title').trim(),
     area: formData.get('area'),
     target_date: emptyToNull(formData.get('target_date')),
-    description: emptyToNull(formData.get('description'))
+    description: emptyToNull(formData.get('description')),
+    strategies: emptyToNull(formData.get('strategies'))
   };
 
   if (editingGoalId) {
@@ -673,7 +758,7 @@ goalForm.addEventListener('submit', async (e) => {
 $('deleteGoalBtn').addEventListener('click', async () => {
   const goal = goals.find((g) => g.id === editingGoalId);
   $('goalDialog').close();
-  const ok = await askConfirm('¿Eliminar este objetivo?', `“${goal.title}” y todo su historial de avance se borrarán.`);
+  const ok = await askConfirm('¿Eliminar este objetivo específico?', `“${goal.title}” y todo su historial de avance se borrarán.`);
   if (!ok) return;
   const { error } = await db.from('goals').delete().eq('id', goal.id);
   if (error) { console.error(error); return; }
@@ -682,30 +767,22 @@ $('deleteGoalBtn').addEventListener('click', async () => {
 
 // ── Ventana: avance ────────────────────────────────────────────────────
 const progressForm = $('progressForm');
-const progressInput = $('prValue');
-
-function updateProgressLabel() {
-  $('prValueLabel').textContent = `${progressInput.value}%`;
-}
+$('prLevels').innerHTML = LEVELS.map((level, i) => `
+  <input type="radio" id="prLevel${i}" name="progress" value="${level.value}" required>
+  <label for="prLevel${i}"><span class="pt-level-steps" aria-hidden="true">${
+    LEVELS.map((_, j) => `<span class="${j <= i ? 'on' : ''}"></span>`).join('')
+  }</span>${level.label}</label>`).join('');
 
 function openProgressDialog(goal) {
   progressGoalId = goal.id;
   progressForm.reset();
   $('progressFormNote').textContent = '';
   $('progressGoalTitle').textContent = goal.title;
-  progressInput.value = goal.progress;
+  $(`prLevel${levelIndex(goal.progress)}`).checked = true;
   $('prDate').value = todayIso();
-  updateProgressLabel();
+  $('progressDialog').style.setProperty('--area', AREAS[goal.area].color);
   $('progressDialog').showModal();
 }
-
-progressInput.addEventListener('input', updateProgressLabel);
-document.querySelectorAll('.pt-quick button').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    progressInput.value = btn.dataset.value;
-    updateProgressLabel();
-  });
-});
 
 progressForm.addEventListener('submit', async (e) => {
   e.preventDefault();
