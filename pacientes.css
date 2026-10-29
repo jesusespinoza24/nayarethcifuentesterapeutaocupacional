@@ -193,7 +193,7 @@ h1, h2, h3 { font-family: var(--font-head); line-height: 1.25; text-wrap: balanc
 .pt-rating-options input:focus-visible + label { outline: 3px solid var(--sun); outline-offset: 2px; }
 
 /* ── Resumen ─────────────────────────────────────────────────────── */
-.pt-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+.pt-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 22px; }
 .pt-stat {
   position: relative;
   overflow: hidden;
@@ -217,6 +217,7 @@ h1, h2, h3 { font-family: var(--font-head); line-height: 1.25; text-wrap: balanc
 .pt-stat-orange { --tile: var(--orange); }
 .pt-stat-teal { --tile: var(--teal); }
 .pt-stat-pink { --tile: var(--pink); }
+.pt-stat-purple { --tile: var(--purple); }
 .pt-stat-value { font-family: var(--font-head); font-size: 2rem; font-weight: 700; color: var(--tile); font-variant-numeric: tabular-nums; line-height: 1.1; }
 .pt-stat-label { font-size: 0.88rem; font-weight: 700; color: var(--ink-soft); }
 
@@ -515,9 +516,130 @@ h1, h2, h3 { font-family: var(--font-head); line-height: 1.25; text-wrap: balanc
   background: var(--orange);
   border: 3px solid var(--surface);
 }
-.pt-session:nth-child(4n+2)::before { background: var(--blue); }
-.pt-session:nth-child(4n+3)::before { background: var(--teal); }
-.pt-session:nth-child(4n+4)::before { background: var(--pink); }
+.pt-session-evaluacion::before { background: var(--purple); }
+.pt-session-intervencion::before { background: var(--teal); }
+.pt-session-tags { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pt-pill-evaluacion { background: rgba(112, 72, 232, 0.13); color: var(--purple); }
+.pt-pill-intervencion { background: rgba(15, 157, 138, 0.14); color: #0b7a6b; }
+.pt-session .pt-dots { margin-top: 6px; }
+
+/* Pago: botón que alterna entre pagada y pendiente */
+.pt-pay {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 2px solid rgba(232, 89, 12, 0.45);
+  background: rgba(232, 89, 12, 0.08);
+  color: #b54708;
+  cursor: pointer;
+}
+.pt-pay::before { content: "$ "; }
+.pt-pay.is-paid { border-color: rgba(15, 157, 138, 0.45); background: rgba(15, 157, 138, 0.10); color: #0b7a6b; }
+.pt-pay.is-paid::before { content: "✓ "; }
+.pt-pay:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+.pt-unpaid-badge {
+  display: inline-block;
+  margin-top: 3px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #b54708;
+  background: rgba(232, 89, 12, 0.10);
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+
+/* ── Etapas de la terapia ────────────────────────────────────────── */
+.pt-steps {
+  list-style: none;
+  margin: 20px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  counter-reset: step;
+}
+.pt-step button {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  text-align: left;
+  font-family: var(--font-body);
+  color: var(--ink);
+  cursor: pointer;
+}
+.pt-step button:hover { border-color: var(--blue); }
+.pt-step button:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+.pt-step-num {
+  flex: none;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-weight: 800;
+  background: var(--bg);
+  color: var(--ink-soft);
+  box-shadow: inset 0 0 0 2px var(--border);
+}
+.pt-step strong { display: block; font-size: 0.9rem; line-height: 1.2; }
+.pt-step small { display: block; font-size: 0.78rem; color: var(--ink-soft); font-weight: 700; }
+.pt-step.is-done .pt-step-num { background: var(--teal); color: #fff; box-shadow: none; }
+.pt-step.is-current button { border-color: var(--blue); background: rgba(67, 97, 238, 0.06); }
+.pt-step.is-current .pt-step-num { background: var(--blue); color: #fff; box-shadow: none; }
+
+/* ── Evaluación ──────────────────────────────────────────────────── */
+.pt-eval-list { display: flex; flex-direction: column; gap: 12px; }
+.pt-eval { border: 2px solid var(--border); border-left-width: 2px; border-radius: 16px; padding: 12px 14px; min-width: 0; }
+.pt-eval p { margin: 6px 0 0; white-space: pre-line; overflow-wrap: anywhere; }
+
+/* ── Informe final ───────────────────────────────────────────────── */
+.pt-check { flex-direction: row !important; align-items: center; gap: 10px !important; align-self: end; padding-bottom: 10px; cursor: pointer; }
+.pt-check input { width: 20px; height: 20px; accent-color: var(--teal); }
+.pt-check-pay { align-self: start; padding-bottom: 0; }
+.pt-note-ok { color: #0b7a6b; font-weight: 800; }
+.pt-report-preview-title { margin: 26px 0 10px; }
+.pt-report {
+  border: 2px solid var(--border);
+  border-radius: 18px;
+  padding: 28px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+.pt-report-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 14px;
+  border-bottom: 3px solid var(--teal);
+}
+.pt-report-head h2 { font-size: 1.3rem; }
+.pt-report-head p { margin: 4px 0 0; color: var(--ink-soft); font-weight: 700; }
+.pt-report-brand { display: flex; flex-direction: column; text-align: left; font-size: 0.85rem; color: var(--ink-soft); }
+.pt-report-brand strong { color: var(--ink); font-family: var(--font-head); }
+.pt-report section { margin-top: 18px; }
+.pt-report h3 { font-size: 1rem; color: var(--teal); margin-bottom: 6px; }
+.pt-report h4 { font-size: 0.88rem; margin: 10px 0 2px; font-family: var(--font-head); }
+.pt-report p { margin: 4px 0; white-space: pre-line; overflow-wrap: anywhere; }
+.pt-report-empty { color: var(--ink-soft); font-style: italic; }
+.pt-report-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 4px 18px; margin: 0; }
+.pt-report-facts dt { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); font-weight: 800; }
+.pt-report-facts dd { margin: 0 0 4px; font-weight: 700; overflow-wrap: anywhere; }
+.pt-report-table { overflow-x: auto; }
+.pt-report table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 0.88rem; }
+.pt-report th, .pt-report td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.pt-report th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); }
+.pt-report td small { color: var(--ink-soft); }
+.pt-report-sign { margin-top: 48px; text-align: center; font-size: 0.88rem; font-weight: 700; }
+.pt-report-sign span { display: block; width: 220px; margin: 0 auto 6px; border-top: 1.5px solid var(--ink); }
 .pt-session-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .pt-session-date { font-family: var(--font-head); font-weight: 600; }
 .pt-session p { margin: 6px 0 0; white-space: pre-line; overflow-wrap: anywhere; }
@@ -549,7 +671,7 @@ h1, h2, h3 { font-family: var(--font-head); line-height: 1.25; text-wrap: balanc
 
 /* ── Responsivo ──────────────────────────────────────────────────── */
 @media (max-width: 900px) {
-  .pt-stats { grid-template-columns: repeat(2, 1fr); }
+  .pt-stats { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
   .pt-layout { grid-template-columns: minmax(0, 1fr); }
   .pt-sidebar { position: static; }
   .pt-patient-list { max-height: 280px; }
@@ -569,6 +691,22 @@ h1, h2, h3 { font-family: var(--font-head); line-height: 1.25; text-wrap: balanc
   .pt-stat-value { font-size: 1.6rem; }
   .pt-chart-grid, .pt-goal-grid { grid-template-columns: minmax(0, 1fr); }
   .pt-dialog { padding: 20px; }
+}
+
+@media (max-width: 700px) {
+  .pt-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pt-report { padding: 18px 14px; }
+  .pt-report-brand { text-align: left; }
+}
+
+/* Al imprimir solo sale el informe final (se copia a #printArea) */
+#printArea { display: none; }
+@media print {
+  body { background: #fff; }
+  body > *:not(#printArea) { display: none !important; }
+  #printArea { display: block; }
+  #printArea .pt-report { border: none; padding: 0; font-size: 11pt; }
+  .pt-report section { break-inside: avoid; }
 }
 
 @media (prefers-reduced-motion: reduce) {

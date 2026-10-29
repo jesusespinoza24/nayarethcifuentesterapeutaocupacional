@@ -7,6 +7,8 @@ const AREAS = {
   social_conducta: { label: 'Social y conducta', color: '#b08800' }
 };
 const PATIENT_STATUS_LABELS = { activo: 'Activo', pausa: 'En pausa', alta: 'Alta' };
+const INSURANCE_LABELS = { fonasa: 'Fonasa', isapre: 'Isapre', particular: 'Particular' };
+const SESSION_KIND_LABELS = { evaluacion: 'Evaluación', intervencion: 'Intervención' };
 const GOAL_STATUS_LABELS = { pendiente: 'Pendiente', en_progreso: 'En progreso', logrado: 'Cumplido' };
 // Niveles de apoyo: se guardan como % en goal_progress; "Independiente" (100) cumple el objetivo
 const LEVELS = [
@@ -40,6 +42,9 @@ let patients = [];
 let currentPatient = null;
 let goals = [];
 let progressRows = [];
+let evaluations = [];
+let unpaidByPatient = {};
+let editingEvaluationId = null;
 let sessions = [];
 let statusFilter = 'activo';
 let editingPatientId = null;
@@ -180,15 +185,20 @@ $('logoutBtn').addEventListener('click', async () => {
 // ── Resumen ────────────────────────────────────────────────────────────
 async function loadStats() {
   const firstOfMonth = todayIso().slice(0, 8) + '01';
-  const [inProgress, achieved, monthSessions] = await Promise.all([
+  const [inProgress, achieved, monthSessions, unpaid] = await Promise.all([
     db.from('goals').select('id', { count: 'exact', head: true }).eq('status', 'en_progreso'),
     db.from('goals').select('id', { count: 'exact', head: true }).eq('status', 'logrado'),
-    db.from('therapy_sessions').select('id', { count: 'exact', head: true }).gte('session_date', firstOfMonth)
+    db.from('therapy_sessions').select('id', { count: 'exact', head: true }).gte('session_date', firstOfMonth),
+    db.from('therapy_sessions').select('patient_id').eq('paid', false)
   ]);
+  unpaidByPatient = {};
+  (unpaid.data || []).forEach((s) => { unpaidByPatient[s.patient_id] = (unpaidByPatient[s.patient_id] || 0) + 1; });
   $('statPatients').textContent = patients.filter((p) => p.status === 'activo').length;
   $('statInProgress').textContent = inProgress.count ?? 0;
   $('statAchieved').textContent = achieved.count ?? 0;
   $('statSessions').textContent = monthSessions.count ?? 0;
+  $('statUnpaid').textContent = (unpaid.data || []).length;
+  renderPatientList();
 }
 
 // ── Lista de pacientes ─────────────────────────────────────────────────
@@ -223,12 +233,17 @@ function renderPatientList() {
   patientList.innerHTML = visible.map((p) => {
     const meta = [ageLabel(p.birth_date), p.diagnosis].filter(Boolean).join(' · ');
     const selected = currentPatient && currentPatient.id === p.id ? ' is-selected' : '';
+    const unpaid = unpaidByPatient[p.id] || 0;
+    const unpaidBadge = unpaid
+      ? `<span class="pt-unpaid-badge">${unpaid} ${unpaid === 1 ? 'pago pendiente' : 'pagos pendientes'}</span>`
+      : '';
     return `<li>
       <button type="button" class="pt-patient-item${selected}" data-id="${p.id}">
         <span class="pt-avatar" style="--av:${avatarColor(p.id)}">${escapeHtml(initials(p.full_name))}</span>
         <span>
           <span class="pt-patient-name">${escapeHtml(p.full_name)}</span>
           <span class="pt-patient-meta">${escapeHtml(meta || PATIENT_STATUS_LABELS[p.status])}</span>
+          ${unpaidBadge}
         </span>
       </button>
     </li>`;
@@ -252,6 +267,7 @@ patientList.addEventListener('click', (e) => {
 
 // ── Ficha del paciente ─────────────────────────────────────────────────
 async function selectPatient(id, scrollIntoView = false) {
+  const changed = !currentPatient || currentPatient.id !== id;
   currentPatient = patients.find((p) => p.id === id) || null;
   renderPatientList();
   if (!currentPatient) {
@@ -266,18 +282,22 @@ async function selectPatient(id, scrollIntoView = false) {
     $('patientDetail').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   await loadPatientData();
+  // Al abrir otro paciente se muestra la pestaña de la etapa en que va
+  if (changed) showTab(currentStep().tab);
 }
 
 async function loadPatientData() {
   const patientId = currentPatient.id;
-  const [goalsRes, sessionsRes] = await Promise.all([
+  const [goalsRes, sessionsRes, evaluationsRes] = await Promise.all([
     db.from('goals').select('*').eq('patient_id', patientId).order('created_at'),
     db.from('therapy_sessions').select('*').eq('patient_id', patientId)
-      .order('session_date', { ascending: false }).order('created_at', { ascending: false })
+      .order('session_date', { ascending: false }).order('created_at', { ascending: false }),
+    db.from('evaluations').select('*').eq('patient_id', patientId).order('eval_date').order('created_at')
   ]);
   if (!currentPatient || currentPatient.id !== patientId) return; // cambió de paciente mientras cargaba
   goals = goalsRes.data || [];
   sessions = sessionsRes.data || [];
+  evaluations = evaluationsRes.data || [];
 
   progressRows = [];
   if (goals.length) {
@@ -286,9 +306,12 @@ async function loadPatientData() {
       .order('recorded_on').order('created_at');
     progressRows = data || [];
   }
+  renderSteps();
+  renderEvaluations();
   renderGoals();
   renderProgress();
   renderSessions();
+  renderReport();
 }
 
 function renderProfile() {
@@ -306,6 +329,7 @@ function renderProfile() {
     ['Edad', ageLabel(p.birth_date)],
     ['Colegio', p.school],
     ['Curso', p.grade],
+    ['Previsión', INSURANCE_LABELS[p.health_insurance]],
     ['Diagnóstico', p.diagnosis],
     ['Motivo de consulta', p.consultation_reason],
     ['Persona responsable', p.guardian_name],
@@ -327,15 +351,87 @@ function renderProfile() {
 }
 
 // ── Pestañas ───────────────────────────────────────────────────────────
-document.querySelectorAll('.pt-tab').forEach((tab) => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.pt-tab').forEach((t) => {
-      const active = t === tab;
-      t.classList.toggle('is-active', active);
-      t.setAttribute('aria-selected', active);
-      $(`tab-${t.dataset.tab}`).hidden = !active;
-    });
+function showTab(name) {
+  document.querySelectorAll('.pt-tab').forEach((t) => {
+    const active = t.dataset.tab === name;
+    t.classList.toggle('is-active', active);
+    t.setAttribute('aria-selected', active);
+    $(`tab-${t.dataset.tab}`).hidden = !active;
   });
+}
+
+document.querySelectorAll('.pt-tab').forEach((tab) => {
+  tab.addEventListener('click', () => showTab(tab.dataset.tab));
+});
+
+// ── Etapas de la terapia ───────────────────────────────────────────────
+// 1) ficha clínica, 2) pauta de evaluación (sesiones 1–2),
+// 3) objetivos específicos desde la sesión 3, 4) informe final
+function processSteps() {
+  const p = currentPatient;
+  const hasReport = !!p.final_report_date;
+  return [
+    { title: 'Ficha clínica', detail: 'Datos del paciente', done: true, tab: 'goals', edit: true },
+    { title: 'Evaluación', detail: 'Sesiones 1 y 2', done: evaluations.length > 0, tab: 'evaluation' },
+    {
+      title: 'Objetivos y avance',
+      detail: goals.length ? `${goals.filter((g) => g.status === 'logrado').length}/${goals.length} cumplidos` : 'Desde la sesión 3',
+      done: hasReport,
+      tab: 'goals'
+    },
+    { title: 'Informe final', detail: hasReport ? formatDate(p.final_report_date) : 'Al terminar', done: hasReport, tab: 'report' }
+  ];
+}
+
+function currentStep() {
+  const steps = processSteps();
+  return steps.find((s) => !s.done) || steps[steps.length - 1];
+}
+
+function renderSteps() {
+  const steps = processSteps();
+  const currentIndex = steps.findIndex((s) => !s.done);
+  $('processSteps').innerHTML = steps.map((s, i) => {
+    const state = s.done ? 'is-done' : i === currentIndex ? 'is-current' : '';
+    return `<li class="pt-step ${state}">
+      <button type="button" data-step="${i}">
+        <span class="pt-step-num">${s.done ? '✓' : i + 1}</span>
+        <span><strong>${s.title}</strong><small>${s.detail}</small></span>
+      </button>
+    </li>`;
+  }).join('');
+}
+
+$('processSteps').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-step]');
+  if (!btn) return;
+  const step = processSteps()[Number(btn.dataset.step)];
+  if (step.edit) openPatientDialog(currentPatient);
+  else showTab(step.tab);
+});
+
+// ── Evaluación ─────────────────────────────────────────────────────────
+function renderEvaluations() {
+  const list = $('evaluationList');
+  if (!evaluations.length) {
+    list.innerHTML = `<div class="pt-panel-empty"><strong>Aún no hay evaluaciones</strong>
+      Registra aquí la pauta que apliques en las sesiones 1 y 2, con sus resultados y conclusiones.</div>`;
+    return;
+  }
+  list.innerHTML = evaluations.map((ev) => `<article class="pt-eval">
+      <div class="pt-session-head">
+        <span class="pt-session-date">${escapeHtml(ev.instrument)}</span>
+        <span class="pt-goal-meta">${formatDate(ev.eval_date)}</span>
+      </div>
+      ${ev.results ? `<p><span class="pt-session-label">Resultados</span><br>${escapeHtml(ev.results)}</p>` : ''}
+      ${ev.conclusions ? `<p><span class="pt-session-label">Conclusiones y áreas a intervenir</span><br>${escapeHtml(ev.conclusions)}</p>` : ''}
+      <p><button type="button" class="pt-link-btn" data-id="${ev.id}">Editar</button></p>
+    </article>`).join('');
+}
+
+$('evaluationList').addEventListener('click', (e) => {
+  const btn = e.target.closest('.pt-link-btn');
+  if (btn) openEvaluationDialog(evaluations.find((ev) => ev.id === btn.dataset.id));
 });
 
 // ── Objetivos ──────────────────────────────────────────────────────────
@@ -554,8 +650,10 @@ function participationDots(value) {
 }
 
 function renderSessions() {
+  const unpaid = sessions.filter((s) => !s.paid).length;
   $('sessionsSummary').textContent = sessions.length
-    ? `${sessions.length} ${sessions.length === 1 ? 'sesión registrada' : 'sesiones registradas'} · última el ${formatDate(sessions[0].session_date)}`
+    ? `${sessions.length} ${sessions.length === 1 ? 'sesión' : 'sesiones'} · ` +
+      (unpaid ? `${unpaid} con pago pendiente` : 'todas pagadas')
     : '';
 
   if (!sessions.length) {
@@ -564,20 +662,169 @@ function renderSessions() {
     return;
   }
 
-  sessionList.innerHTML = sessions.map((s) => `<li class="pt-session">
+  // La lista va de la más reciente a la más antigua; el número cuenta desde la primera
+  sessionList.innerHTML = sessions.map((s, i) => `<li class="pt-session pt-session-${s.kind}">
       <div class="pt-session-head">
-        <span class="pt-session-date">${formatDate(s.session_date)}</span>
-        ${participationDots(s.participation)}
+        <span class="pt-session-date">Sesión ${sessions.length - i} · ${formatDate(s.session_date)}</span>
+        <span class="pt-session-tags">
+          <span class="pt-pill pt-pill-${s.kind}">${SESSION_KIND_LABELS[s.kind] || 'Intervención'}</span>
+          <button type="button" class="pt-pay ${s.paid ? 'is-paid' : ''}" data-pay="${s.id}"
+            title="${s.paid ? 'Marcar como pendiente' : 'Marcar como pagada'}">${s.paid ? 'Pagada' : 'Pago pendiente'}</button>
+        </span>
       </div>
+      ${participationDots(s.participation)}
       ${s.activities ? `<p><span class="pt-session-label">Actividades</span><br>${escapeHtml(s.activities)}</p>` : ''}
       ${s.observations ? `<p><span class="pt-session-label">Observaciones</span><br>${escapeHtml(s.observations)}</p>` : ''}
       <p><button type="button" class="pt-link-btn" data-id="${s.id}">Editar</button></p>
     </li>`).join('');
 }
 
-sessionList.addEventListener('click', (e) => {
+sessionList.addEventListener('click', async (e) => {
+  const pay = e.target.closest('[data-pay]');
+  if (pay) {
+    const session = sessions.find((s) => s.id === pay.dataset.pay);
+    pay.disabled = true;
+    const { error } = await db.from('therapy_sessions').update({ paid: !session.paid }).eq('id', session.id);
+    if (error) { console.error(error); pay.disabled = false; return; }
+    await afterChange();
+    return;
+  }
   const btn = e.target.closest('.pt-link-btn');
   if (btn) openSessionDialog(sessions.find((s) => s.id === btn.dataset.id));
+});
+
+// ── Informe final ──────────────────────────────────────────────────────
+const reportForm = $('reportForm');
+
+function renderReport() {
+  const p = currentPatient;
+  $('rDate').value = p.final_report_date || todayIso();
+  $('rConclusions').value = p.final_conclusions || '';
+  $('rRecommendations').value = p.final_recommendations || '';
+  $('rDischarge').checked = false;
+  $('reportFormNote').textContent = '';
+  $('reportSaved').textContent = p.final_report_date ? `Guardado · ${formatDate(p.final_report_date)}` : '';
+  renderReportDoc();
+}
+
+// Arma el informe con los datos de la ficha, la evaluación, los objetivos y las sesiones
+function renderReportDoc() {
+  const p = currentPatient;
+  const ordered = [...sessions].reverse();
+  const evalCount = sessions.filter((s) => s.kind === 'evaluacion').length;
+  const period = ordered.length
+    ? `${formatDate(ordered[0].session_date)} al ${formatDate(ordered[ordered.length - 1].session_date)}`
+    : 'Sin sesiones registradas';
+  const facts = [
+    ['Nombre', p.full_name],
+    ['RUT', p.rut],
+    ['Fecha de nacimiento', p.birth_date ? `${formatDate(p.birth_date)} (${ageLabel(p.birth_date)})` : ''],
+    ['Colegio', [p.school, p.grade].filter(Boolean).join(' · ')],
+    ['Previsión', INSURANCE_LABELS[p.health_insurance]],
+    ['Persona responsable', p.guardian_name],
+    ['Diagnóstico', p.diagnosis]
+  ].filter(([, v]) => v);
+  const paragraph = (text) => text ? `<p>${escapeHtml(text)}</p>` : '<p class="pt-report-empty">Sin completar.</p>';
+  const conclusions = $('rConclusions').value.trim();
+  const recommendations = $('rRecommendations').value.trim();
+  const reportDate = $('rDate').value;
+
+  const goalRowsHtml = goals.map((g) => {
+    const rows = goalRows(g.id);
+    const first = rows.length ? levelFor(rows[0].progress).label : '—';
+    const achieved = g.status === 'logrado' ? achievedDate(g.id) : null;
+    return `<tr>
+      <td>${escapeHtml(g.title)}<br><small>${AREAS[g.area].label}</small></td>
+      <td>${first}</td>
+      <td>${levelFor(g.progress).label}</td>
+      <td>${achieved ? `Cumplido el ${formatDate(achieved)}` : GOAL_STATUS_LABELS[g.status]}</td>
+    </tr>`;
+  }).join('');
+
+  $('reportDoc').innerHTML = `
+    <header class="pt-report-head">
+      <div>
+        <h2>Informe final de Terapia Ocupacional</h2>
+        <p>${reportDate ? formatDate(reportDate) : ''}</p>
+      </div>
+      <div class="pt-report-brand">
+        <strong>Nayareth Cifuentes Fuchslocher</strong>
+        <span>Terapeuta Ocupacional · Registro SIS N° 935279</span>
+      </div>
+    </header>
+
+    <section>
+      <h3>Antecedentes</h3>
+      <dl class="pt-report-facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>
+      <h4>Motivo de consulta</h4>
+      ${paragraph(p.consultation_reason)}
+    </section>
+
+    <section>
+      <h3>Proceso terapéutico</h3>
+      <p>Periodo: ${period}. Total: ${sessions.length} ${sessions.length === 1 ? 'sesión' : 'sesiones'}
+        (${evalCount} de evaluación y ${sessions.length - evalCount} de intervención).</p>
+    </section>
+
+    <section>
+      <h3>Evaluación</h3>
+      ${evaluations.length ? evaluations.map((ev) => `
+        <h4>${escapeHtml(ev.instrument)} · ${formatDate(ev.eval_date)}</h4>
+        ${ev.results ? `<p>${escapeHtml(ev.results)}</p>` : ''}
+        ${ev.conclusions ? `<p>${escapeHtml(ev.conclusions)}</p>` : ''}`).join('') : '<p class="pt-report-empty">Sin evaluaciones registradas.</p>'}
+    </section>
+
+    <section>
+      <h3>Objetivos</h3>
+      <h4>Objetivo general</h4>
+      ${paragraph(p.general_goal)}
+      <h4>Objetivos específicos</h4>
+      ${goals.length ? `<div class="pt-report-table"><table>
+        <thead><tr><th>Objetivo</th><th>Nivel inicial</th><th>Nivel final</th><th>Estado</th></tr></thead>
+        <tbody>${goalRowsHtml}</tbody>
+      </table></div>` : '<p class="pt-report-empty">Sin objetivos específicos.</p>'}
+    </section>
+
+    <section>
+      <h3>Conclusiones</h3>
+      ${paragraph(conclusions)}
+      <h3>Recomendaciones</h3>
+      ${paragraph(recommendations)}
+    </section>
+
+    <footer class="pt-report-sign">
+      <span></span>
+      Nayareth Cifuentes Fuchslocher<br>Terapeuta Ocupacional
+    </footer>`;
+}
+
+// La vista previa se actualiza mientras se escribe
+['rDate', 'rConclusions', 'rRecommendations'].forEach((id) => $(id).addEventListener('input', renderReportDoc));
+
+reportForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('reportFormNote').textContent = '';
+  const formData = new FormData(reportForm);
+  const payload = {
+    final_report_date: formData.get('final_report_date'),
+    final_conclusions: emptyToNull(formData.get('final_conclusions')),
+    final_recommendations: emptyToNull(formData.get('final_recommendations'))
+  };
+  if (formData.get('discharge')) payload.status = 'alta';
+  const { data, error } = await db.from('patients').update(payload).eq('id', currentPatient.id).select().single();
+  if (error) return showError($('reportFormNote'), error);
+  Object.assign(currentPatient, data);
+  renderProfile();
+  renderSteps();
+  renderReport();
+  renderPatientList();
+  await loadStats();
+});
+
+$('printReportBtn').addEventListener('click', () => {
+  renderReportDoc();
+  $('printReport').innerHTML = $('reportDoc').innerHTML;
+  window.print();
 });
 
 // ── Ventanas: comunes ──────────────────────────────────────────────────
@@ -623,6 +870,7 @@ function openPatientDialog(patient = null) {
     $('pGuardianName').value = patient.guardian_name || '';
     $('pGuardianPhone').value = patient.guardian_phone || '';
     $('pComuna').value = patient.comuna || '';
+    $('pInsurance').value = patient.health_insurance || '';
     $('pNotes').value = patient.notes || '';
   }
   updateAgeHint();
@@ -668,6 +916,7 @@ patientForm.addEventListener('submit', async (e) => {
     guardian_name: emptyToNull(formData.get('guardian_name')),
     guardian_phone: emptyToNull(formData.get('guardian_phone')),
     comuna: emptyToNull(formData.get('comuna')),
+    health_insurance: emptyToNull(formData.get('health_insurance')),
     notes: emptyToNull(formData.get('notes'))
   };
   const query = editingPatientId
@@ -808,6 +1057,9 @@ function openSessionDialog(session = null) {
   $('sessionDialogTitle').textContent = session ? 'Editar sesión' : 'Registrar sesión';
   $('deleteSessionBtn').hidden = !session;
   $('sDate').value = session ? session.session_date : todayIso();
+  // Las sesiones 1 y 2 son de evaluación; desde la 3 comienza la intervención
+  $('sKind').value = session ? session.kind : (sessions.length < 2 ? 'evaluacion' : 'intervencion');
+  $('sPaid').checked = session ? session.paid : false;
   if (session) {
     $('sActivities').value = session.activities || '';
     $('sObservations').value = session.observations || '';
@@ -823,6 +1075,8 @@ sessionForm.addEventListener('submit', async (e) => {
   const formData = new FormData(sessionForm);
   const payload = {
     session_date: formData.get('session_date'),
+    kind: formData.get('kind'),
+    paid: formData.get('paid') === 'on',
     participation: formData.get('participation') ? Number(formData.get('participation')) : null,
     activities: emptyToNull(formData.get('activities')),
     observations: emptyToNull(formData.get('observations'))
@@ -841,6 +1095,53 @@ $('deleteSessionBtn').addEventListener('click', async () => {
   const ok = await askConfirm('¿Eliminar esta sesión?', `Se borrará el registro del ${formatDate(session.session_date)}.`);
   if (!ok) return;
   const { error } = await db.from('therapy_sessions').delete().eq('id', session.id);
+  if (error) { console.error(error); return; }
+  await afterChange();
+});
+
+// ── Ventana: evaluación ────────────────────────────────────────────────
+const evaluationForm = $('evaluationForm');
+
+function openEvaluationDialog(evaluation = null) {
+  editingEvaluationId = evaluation ? evaluation.id : null;
+  evaluationForm.reset();
+  $('evaluationFormNote').textContent = '';
+  $('evaluationDialogTitle').textContent = evaluation ? 'Editar evaluación' : 'Registrar evaluación';
+  $('deleteEvaluationBtn').hidden = !evaluation;
+  $('eDate').value = evaluation ? evaluation.eval_date : todayIso();
+  if (evaluation) {
+    $('eInstrument').value = evaluation.instrument;
+    $('eResults').value = evaluation.results || '';
+    $('eConclusions').value = evaluation.conclusions || '';
+  }
+  $('evaluationDialog').showModal();
+}
+
+$('newEvaluationBtn').addEventListener('click', () => openEvaluationDialog());
+
+evaluationForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(evaluationForm);
+  const payload = {
+    instrument: formData.get('instrument').trim(),
+    eval_date: formData.get('eval_date'),
+    results: emptyToNull(formData.get('results')),
+    conclusions: emptyToNull(formData.get('conclusions'))
+  };
+  const { error } = editingEvaluationId
+    ? await db.from('evaluations').update(payload).eq('id', editingEvaluationId)
+    : await db.from('evaluations').insert({ ...payload, patient_id: currentPatient.id });
+  if (error) return showError($('evaluationFormNote'), error);
+  $('evaluationDialog').close();
+  await afterChange();
+});
+
+$('deleteEvaluationBtn').addEventListener('click', async () => {
+  const evaluation = evaluations.find((ev) => ev.id === editingEvaluationId);
+  $('evaluationDialog').close();
+  const ok = await askConfirm('¿Eliminar esta evaluación?', `Se borrará “${evaluation.instrument}” del ${formatDate(evaluation.eval_date)}.`);
+  if (!ok) return;
+  const { error } = await db.from('evaluations').delete().eq('id', evaluation.id);
   if (error) { console.error(error); return; }
   await afterChange();
 });

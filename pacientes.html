@@ -53,6 +53,7 @@
       <div class="pt-stat pt-stat-orange"><span class="pt-stat-value" id="statInProgress">0</span><span class="pt-stat-label">Objetivos en progreso</span></div>
       <div class="pt-stat pt-stat-teal"><span class="pt-stat-value" id="statAchieved">0</span><span class="pt-stat-label">Objetivos cumplidos</span></div>
       <div class="pt-stat pt-stat-pink"><span class="pt-stat-value" id="statSessions">0</span><span class="pt-stat-label">Sesiones este mes</span></div>
+      <div class="pt-stat pt-stat-purple"><span class="pt-stat-value" id="statUnpaid">0</span><span class="pt-stat-label">Sesiones con pago pendiente</span></div>
     </div>
 
     <div class="pt-layout">
@@ -92,10 +93,25 @@
           </div>
           <p class="pt-profile-notes" id="profileNotes" hidden></p>
 
+          <ol class="pt-steps" id="processSteps" aria-label="Etapas de la terapia"></ol>
+
           <div class="pt-tabs" role="tablist">
+            <button type="button" class="pt-tab" role="tab" data-tab="evaluation" aria-selected="false">Evaluación</button>
             <button type="button" class="pt-tab is-active" role="tab" data-tab="goals" aria-selected="true">Objetivos</button>
             <button type="button" class="pt-tab" role="tab" data-tab="progress" aria-selected="false">Avance</button>
             <button type="button" class="pt-tab" role="tab" data-tab="sessions" aria-selected="false">Sesiones</button>
+            <button type="button" class="pt-tab" role="tab" data-tab="report" aria-selected="false">Informe final</button>
+          </div>
+
+          <div class="pt-tab-panel" id="tab-evaluation" role="tabpanel" hidden>
+            <div class="pt-panel-head">
+              <div>
+                <h3 class="pt-panel-title">Pautas de evaluación</h3>
+                <p class="pt-panel-summary">Se aplican en las sesiones 1 y 2, antes de definir los objetivos.</p>
+              </div>
+              <button type="button" class="pt-btn pt-btn-primary pt-btn-small" id="newEvaluationBtn">+ Registrar evaluación</button>
+            </div>
+            <div class="pt-eval-list" id="evaluationList"></div>
           </div>
 
           <div class="pt-tab-panel" id="tab-goals" role="tabpanel">
@@ -132,6 +148,41 @@
             </div>
             <ol class="pt-timeline" id="sessionList"></ol>
           </div>
+
+          <div class="pt-tab-panel" id="tab-report" role="tabpanel" hidden>
+            <form class="pt-form pt-report-form" id="reportForm">
+              <div class="pt-panel-head">
+                <div>
+                  <h3 class="pt-panel-title">Informe final</h3>
+                  <p class="pt-panel-summary">Se completa al terminar las sesiones. Los datos, la evaluación y los objetivos se agregan solos al informe.</p>
+                </div>
+              </div>
+              <div class="pt-form-row">
+                <label for="rDate">Fecha del informe
+                  <input type="date" id="rDate" name="final_report_date" required>
+                </label>
+                <label class="pt-check" for="rDischarge">
+                  <input type="checkbox" id="rDischarge" name="discharge">
+                  Dar de alta al paciente al guardar
+                </label>
+              </div>
+              <label for="rConclusions">Conclusiones
+                <textarea id="rConclusions" name="final_conclusions" rows="4" maxlength="4000" placeholder="Ej.: Tomás logró vestirse de forma independiente…"></textarea>
+              </label>
+              <label for="rRecommendations">Recomendaciones
+                <textarea id="rRecommendations" name="final_recommendations" rows="4" maxlength="4000" placeholder="Ej.: Mantener rutina visual en el hogar, control en 3 meses…"></textarea>
+              </label>
+              <p class="pt-note pt-note-error" id="reportFormNote" role="alert"></p>
+              <div class="pt-dialog-actions">
+                <span class="pt-note pt-note-ok" id="reportSaved"></span>
+                <span class="pt-spacer"></span>
+                <button type="button" class="pt-btn pt-btn-ghost" id="printReportBtn">Imprimir o guardar PDF</button>
+                <button type="submit" class="pt-btn pt-btn-primary">Guardar informe</button>
+              </div>
+            </form>
+            <h3 class="pt-panel-title pt-report-preview-title">Vista previa</h3>
+            <article class="pt-report" id="reportDoc"></article>
+          </div>
         </div>
       </div>
     </div>
@@ -139,6 +190,7 @@
 </main>
 
 <div class="pt-tooltip" id="chartTooltip" hidden></div>
+<div id="printArea"><article class="pt-report" id="printReport"></article></div>
 
 <!-- ── Ventanas de formularios ─────────────────────────────────────── -->
 <dialog class="pt-dialog" id="patientDialog">
@@ -182,6 +234,16 @@
       <label for="pComuna">Comuna
         <input type="text" id="pComuna" name="comuna" maxlength="80">
       </label>
+      <label for="pInsurance">Previsión
+        <select id="pInsurance" name="health_insurance">
+          <option value="">Sin indicar</option>
+          <option value="fonasa">Fonasa</option>
+          <option value="isapre">Isapre</option>
+          <option value="particular">Particular</option>
+        </select>
+      </label>
+    </div>
+    <div class="pt-form-row">
       <label for="pStatus">Estado
         <select id="pStatus" name="status">
           <option value="activo">Activo</option>
@@ -267,6 +329,18 @@
       <label for="sDate">Fecha
         <input type="date" id="sDate" name="session_date" required>
       </label>
+      <label for="sKind">Tipo de sesión
+        <select id="sKind" name="kind">
+          <option value="evaluacion">Evaluación</option>
+          <option value="intervencion">Intervención</option>
+        </select>
+      </label>
+    </div>
+    <label class="pt-check pt-check-pay" for="sPaid">
+      <input type="checkbox" id="sPaid" name="paid">
+      Pago cancelado
+    </label>
+    <div class="pt-form-row">
       <fieldset class="pt-rating">
         <legend>Participación</legend>
         <div class="pt-rating-options">
@@ -287,6 +361,33 @@
     <p class="pt-note pt-note-error" id="sessionFormNote" role="alert"></p>
     <div class="pt-dialog-actions">
       <button type="button" class="pt-btn pt-btn-danger-ghost" id="deleteSessionBtn" hidden>Eliminar sesión</button>
+      <span class="pt-spacer"></span>
+      <button type="button" class="pt-btn pt-btn-ghost" data-close>Cancelar</button>
+      <button type="submit" class="pt-btn pt-btn-primary">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="pt-dialog" id="evaluationDialog">
+  <form method="dialog" class="pt-form" id="evaluationForm">
+    <h2 id="evaluationDialogTitle">Registrar evaluación</h2>
+    <div class="pt-form-row">
+      <label for="eInstrument">Pauta o instrumento aplicado
+        <input type="text" id="eInstrument" name="instrument" minlength="2" maxlength="200" required placeholder="Ej.: Perfil Sensorial 2">
+      </label>
+      <label for="eDate">Fecha
+        <input type="date" id="eDate" name="eval_date" required>
+      </label>
+    </div>
+    <label for="eResults">Resultados
+      <textarea id="eResults" name="results" rows="4" maxlength="4000" placeholder="Puntajes, observaciones y hallazgos de la pauta"></textarea>
+    </label>
+    <label for="eConclusions">Conclusiones y áreas a intervenir
+      <textarea id="eConclusions" name="conclusions" rows="3" maxlength="4000"></textarea>
+    </label>
+    <p class="pt-note pt-note-error" id="evaluationFormNote" role="alert"></p>
+    <div class="pt-dialog-actions">
+      <button type="button" class="pt-btn pt-btn-danger-ghost" id="deleteEvaluationBtn" hidden>Eliminar</button>
       <span class="pt-spacer"></span>
       <button type="button" class="pt-btn pt-btn-ghost" data-close>Cancelar</button>
       <button type="submit" class="pt-btn pt-btn-primary">Guardar</button>
