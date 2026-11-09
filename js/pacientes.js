@@ -1348,7 +1348,7 @@ function updatePopulationFields() {
   patientForm.querySelectorAll('.pt-only-child').forEach((el) => { el.hidden = adult; });
   $('pDiagnosisLabel').textContent = 'Diagnóstico';
   $('pGuardianLabel').textContent = adult ? 'Cuidador principal' : 'Persona responsable';
-  $('pGuardianName').placeholder = adult ? 'Ej.: Orlando, su esposo' : 'Ej.: Ana, su madre';
+  $('pGuardianName').placeholder = adult ? 'Ej.: Pedro, su esposo' : 'Ej.: Ana, su madre';
 }
 
 $('pPopulation').addEventListener('change', updatePopulationFields);
