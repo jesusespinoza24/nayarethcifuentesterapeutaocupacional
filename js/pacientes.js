@@ -81,15 +81,15 @@ const SECTIONS = {
   // ── Secciones de la atención de adultos ──
   clinicos_adulto: {
     title: 'Antecedentes clínicos',
-    hint: 'Diagnóstico principal, comorbilidades, síndromes geriátricos, antecedentes de demencia, ayudas técnicas y medicamentos.',
+    hint: 'Diagnóstico, comorbilidades, síndromes geriátricos, tratamiento farmacológico y otras intervenciones.',
     fields: [
-      { key: 'main_diagnosis', label: 'Diagnóstico principal', rows: 2, placeholder: 'Ej.: Trastorno neurocognitivo mayor GDS 4' },
+      { key: 'main_diagnosis', label: 'Diagnóstico', rows: 2, placeholder: 'Ej.: Trastorno neurocognitivo mayor GDS 4' },
       { key: 'comorbidities', label: 'Comorbilidades', rows: 3, placeholder: 'Ej.: Arritmia cardiaca - Glaucoma ojo izquierdo - Hipoacusia bilateral' },
       { key: 'geriatric_syndromes', label: 'Síndromes geriátricos', rows: 2, placeholder: 'Ej.: Trastornos sensoriales auditivo y visual' },
+      { key: 'medication', label: 'Tratamiento farmacológico (uno por línea)', rows: 6, placeholder: 'Ej.: Rivastigmina 13.3 mg parche 1-0-0\nMirtazapina 15 mg 0-0-1' },
+      { key: 'other_interventions', label: 'Otras intervenciones', rows: 2, placeholder: 'Ej.: Atención, lenguaje, planificación' },
       { key: 'dementia_history', label: 'Antecedentes de demencia', rows: 2, placeholder: 'Diagnóstico, año, quién hace el seguimiento, antecedentes familiares' },
-      { key: 'technical_aids', label: 'Ayudas técnicas', rows: 1, placeholder: 'Ej.: Lentes ópticos - audífono oído izquierdo' },
-      { key: 'medication', label: 'Medicamentos (uno por línea)', rows: 6, placeholder: 'Ej.: Rivastigmina 13.3 mg parche 1-0-0\nMirtazapina 15 mg 0-0-1' },
-      { key: 'other_interventions', label: 'Otras intervenciones', rows: 2, placeholder: 'Ej.: Atención, lenguaje, planificación' }
+      { key: 'technical_aids', label: 'Ayudas técnicas', rows: 1, placeholder: 'Ej.: Lentes ópticos - audífono oído izquierdo' }
     ]
   },
   sociofamiliar: {
@@ -662,12 +662,13 @@ function renderSections() {
       ['Persona responsable', p.guardian_name],
       ['Lateralidad', c.laterality],
       ['Inscripción en el RND', c.rnd],
-      ['Previsión', INSURANCE_LABELS[p.health_insurance]]
+      ['Previsión', INSURANCE_LABELS[p.health_insurance]],
+      ['Motivo de consulta', p.consultation_reason]
     ]).filter(([, v]) => v);
   const population = populationOf(p);
   $('fichaSections').innerHTML = `<section class="pt-section-card">
       <div class="pt-section-head">
-        <h4>${adult ? 'Antecedentes generales' : 'Antecedentes personales'}</h4>
+        <h4>Antecedentes personales</h4>
         <button type="button" class="pt-link-btn" data-edit-patient>Editar</button>
       </div>
       <dl class="pt-profile-facts">${personal.map(([k, v]) => `<div><dt>${k}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>
@@ -798,6 +799,13 @@ function activityList(text) {
   return (text || '').split('\n').map((line) => line.replace(/^[-•·]\s*/, '').trim()).filter(Boolean);
 }
 
+// Estrategias: una por línea se muestran como lista; las antiguas escritas en una sola línea quedan como párrafo
+function strategyListHtml(text, listClass = '') {
+  const items = activityList(text);
+  if (items.length > 1) return `<ul${listClass ? ` class="${listClass}"` : ''}>${items.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}</ul>`;
+  return `<p>${escapeHtml(items[0] || '')}</p>`;
+}
+
 function renderGoals() {
   const done = goals.filter((g) => g.status === 'logrado').length;
   $('goalsSummary').textContent = generalGoals.length
@@ -828,7 +836,7 @@ function renderGoals() {
           <h3>Asigna estos objetivos a un objetivo general con “Editar”</h3></div></div>`;
     const plan = gg && (gg.strategies || activities.length)
       ? `<div class="pt-gg-plan">
-          ${gg.strategies ? `<div><span class="pt-section-label">Estrategias</span><p>${escapeHtml(gg.strategies)}</p></div>` : ''}
+          ${gg.strategies ? `<div><span class="pt-section-label">Estrategias</span>${strategyListHtml(gg.strategies)}</div>` : ''}
           ${activities.length ? `<div><span class="pt-section-label">Actividades</span><ul>${activities.map((a) => `<li>${escapeHtml(a)}</li>`).join('')}</ul></div>` : ''}
         </div>`
       : '';
@@ -1070,12 +1078,12 @@ function renderReportDoc() {
     field('Persona responsable', p.guardian_name),
     field('Lateralidad', c.laterality),
     field('Inscripción en el RND', c.rnd),
-    field('Previsión', INSURANCE_LABELS[p.health_insurance])
+    field('Previsión', INSURANCE_LABELS[p.health_insurance]),
+    field('Motivo de consulta', p.consultation_reason)
   ].join(''));
 
   add('Antecedentes clínicos', [
     field('Diagnósticos', c.diagnoses || p.diagnosis),
-    field('Motivo de consulta', p.consultation_reason),
     field('Tratamiento farmacológico', c.medication),
     field('Otras intervenciones', c.other_interventions),
     field('Ayudas técnicas', c.technical_aids),
@@ -1131,7 +1139,9 @@ function renderReportDoc() {
     return `<div class="pt-report-goal">
       <p><strong>${number}. Objetivo general:</strong> ${text(gg.title)}${gg.period ? `, en un periodo de ${text(gg.period)}` : ''}.</p>
       ${specific ? `<ul class="pt-report-dash">${specific}</ul>` : ''}
-      ${field('Estrategias', gg.strategies)}
+      ${activityList(gg.strategies).length > 1
+        ? `<p><strong>Estrategias:</strong></p>${strategyListHtml(gg.strategies, 'pt-report-dash')}`
+        : field('Estrategias', gg.strategies)}
       ${activities.length ? `<p><strong>Actividades:</strong></p><ul class="pt-report-dash">${activities.map((a) => `<li>${text(a)}</li>`).join('')}</ul>` : ''}
     </div>`;
   }).join(''));
@@ -1189,26 +1199,26 @@ function renderReportDoc() {
 // (antecedentes generales y clínicos, fechas e instrumentos, contexto sociofamiliar,
 // estado funcional por componentes, AVD y síntesis diagnóstica)
 function addAdultSections(add, { p, c, text, field, bullets }) {
-  add('Antecedentes generales', [
+  add('Antecedentes personales', [
     field('Nombre', p.full_name),
     field('Edad', ageLabel(p.birth_date)),
     field('Fecha de nacimiento', p.birth_date ? formatDate(p.birth_date) : ''),
     field('RUT', p.rut),
     field('Sexo', c.sex),
     field('Cuidador principal', p.guardian_name),
-    field('Previsión', INSURANCE_LABELS[p.health_insurance])
+    field('Previsión', INSURANCE_LABELS[p.health_insurance]),
+    field('Motivo de consulta', p.consultation_reason)
   ].join(''));
 
   const medication = activityList(c.medication);
   add('Antecedentes clínicos', [
-    field('Diagnóstico principal', c.main_diagnosis || p.diagnosis),
-    field('Motivo de consulta', p.consultation_reason),
+    field('Diagnóstico', c.main_diagnosis || p.diagnosis),
     field('Comorbilidades', c.comorbidities),
     field('Síndromes geriátricos', c.geriatric_syndromes),
+    medication.length ? `<p><strong>Tratamiento farmacológico:</strong></p><ul class="pt-report-dash">${medication.map((m) => `<li>${text(m)}</li>`).join('')}</ul>` : '',
+    field('Otras intervenciones', c.other_interventions),
     field('Antecedentes de demencia', c.dementia_history),
-    field('Ayuda técnica', c.technical_aids),
-    medication.length ? `<p><strong>Medicamentos:</strong></p><ul class="pt-report-dash">${medication.map((m) => `<li>${text(m)}</li>`).join('')}</ul>` : '',
-    field('Otras intervenciones', c.other_interventions)
+    field('Ayudas técnicas', c.technical_aids)
   ].join(''));
 
   add('Fechas de evaluación', bullets(activityList(c.evaluation_dates)));
@@ -1336,7 +1346,7 @@ function openPatientDialog(patient = null) {
 function updatePopulationFields() {
   const adult = patientForm.querySelector('input[name="population"]:checked').value === 'adulto';
   patientForm.querySelectorAll('.pt-only-child').forEach((el) => { el.hidden = adult; });
-  $('pDiagnosisLabel').textContent = adult ? 'Diagnóstico principal' : 'Diagnóstico';
+  $('pDiagnosisLabel').textContent = 'Diagnóstico';
   $('pGuardianLabel').textContent = adult ? 'Cuidador principal' : 'Persona responsable';
   $('pGuardianName').placeholder = adult ? 'Ej.: Orlando, su esposo' : 'Ej.: Ana, su madre';
 }
