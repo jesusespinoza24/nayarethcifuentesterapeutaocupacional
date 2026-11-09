@@ -63,6 +63,11 @@
           <button type="button" class="pt-btn pt-btn-primary pt-btn-small" id="newPatientBtn">+ Nuevo</button>
         </div>
         <input type="search" id="patientSearch" class="pt-search" placeholder="Buscar por nombre o RUT…" aria-label="Buscar paciente">
+        <div class="pt-chips pt-chips-population" role="group" aria-label="Filtrar por tipo de atención">
+          <button type="button" class="pt-chip is-active" data-population="todos">Todos</button>
+          <button type="button" class="pt-chip" data-population="infantil">Niños</button>
+          <button type="button" class="pt-chip" data-population="adulto">Adultos</button>
+        </div>
         <div class="pt-chips" role="group" aria-label="Filtrar por estado">
           <button type="button" class="pt-chip is-active" data-filter="activo">Activos</button>
           <button type="button" class="pt-chip" data-filter="pausa">En pausa</button>
@@ -113,7 +118,7 @@
             <div class="pt-panel-head">
               <div>
                 <h3 class="pt-panel-title">Instrumentos de evaluación</h3>
-                <p class="pt-panel-summary">Se aplican en las sesiones 1 y 2, antes de definir los objetivos.</p>
+                <p class="pt-panel-summary" id="evaluationSummary">Se aplican en las sesiones 1 y 2, antes de definir los objetivos.</p>
               </div>
               <button type="button" class="pt-btn pt-btn-primary pt-btn-small" id="newEvaluationBtn">+ Registrar instrumento</button>
             </div>
@@ -192,6 +197,11 @@
 <dialog class="pt-dialog" id="patientDialog">
   <form method="dialog" class="pt-form" id="patientForm">
     <h2 id="patientDialogTitle">Nuevo paciente</h2>
+    <fieldset class="pt-population" id="pPopulation">
+      <legend>Tipo de atención</legend>
+      <label><input type="radio" name="population" value="infantil" checked> Niños</label>
+      <label><input type="radio" name="population" value="adulto"> Adultos</label>
+    </fieldset>
     <label for="pFullName">Nombre completo
       <input type="text" id="pFullName" name="full_name" minlength="2" maxlength="120" required>
     </label>
@@ -212,7 +222,7 @@
           <option>Femenino</option>
         </select>
       </label>
-      <label for="pLaterality">Lateralidad
+      <label for="pLaterality" class="pt-only-child">Lateralidad
         <select id="pLaterality" name="laterality">
           <option value="">Sin indicar</option>
           <option>Diestro</option>
@@ -222,7 +232,7 @@
         </select>
       </label>
     </div>
-    <div class="pt-form-row">
+    <div class="pt-form-row pt-only-child">
       <label for="pSchool">Colegio
         <input type="text" id="pSchool" name="school" maxlength="120">
       </label>
@@ -230,14 +240,14 @@
         <input type="text" id="pGrade" name="grade" maxlength="60" placeholder="Ej.: 2° básico">
       </label>
     </div>
-    <label for="pDiagnosis">Diagnóstico
+    <label for="pDiagnosis"><span id="pDiagnosisLabel">Diagnóstico</span>
       <input type="text" id="pDiagnosis" name="diagnosis" maxlength="300">
     </label>
     <label for="pReason">Motivo de consulta
       <textarea id="pReason" name="consultation_reason" rows="2" maxlength="1000"></textarea>
     </label>
     <div class="pt-form-row">
-      <label for="pGuardianName">Persona responsable
+      <label for="pGuardianName"><span id="pGuardianLabel">Persona responsable</span>
         <input type="text" id="pGuardianName" name="guardian_name" maxlength="120" placeholder="Ej.: Ana, su madre">
       </label>
       <label for="pGuardianPhone">Teléfono
@@ -266,7 +276,7 @@
         </select>
       </label>
     </div>
-    <label for="pRnd">Inscripción en el RND
+    <label for="pRnd" class="pt-only-child">Inscripción en el RND
       <input type="text" id="pRnd" name="rnd" maxlength="200" placeholder="Ej.: Inscrito / Sin información">
     </label>
     <label for="pNotes">Notas generales (no salen en el informe)

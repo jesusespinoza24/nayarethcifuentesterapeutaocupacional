@@ -250,6 +250,35 @@ h1, h2, h3 { font-family: var(--font-head); line-height: 1.25; text-wrap: balanc
   cursor: pointer;
 }
 .pt-chip.is-active { background: var(--purple); border-color: var(--purple); color: #fff; }
+.pt-chips-population .pt-chip.is-active { background: var(--teal); border-color: var(--teal); }
+
+/* Tipo de atención: niños / adultos */
+.pt-pop-tag {
+  display: inline-block;
+  vertical-align: 1px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 999px;
+  margin-left: 4px;
+}
+.pt-pop-infantil { background: #e7ecff; color: var(--blue-dark); }
+.pt-pop-adulto { background: #fdebd8; color: #a63f04; }
+.pt-population { border: none; padding: 0; margin: 0; display: flex; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.pt-population legend { font-weight: 700; font-size: 0.92rem; padding: 0; margin-bottom: 8px; width: 100%; }
+.pt-form .pt-population label {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 800;
+}
+.pt-population label:has(input:checked) { border-color: var(--teal); background: #e3f6f2; color: #0b7a6b; }
+.pt-population input { accent-color: var(--teal); }
+.pt-only-child[hidden] { display: none !important; }
 
 .pt-patient-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow-y: auto; }
 .pt-patient-item {

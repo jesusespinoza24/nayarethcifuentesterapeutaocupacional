@@ -6,6 +6,17 @@ const AREAS = {
   cognicion_juego: { label: 'Cognición y juego', color: '#7048e8' },
   social_conducta: { label: 'Social y conducta', color: '#b08800' }
 };
+// En adultos se usan las mismas áreas guardadas en la base de datos, con nombres propios de la atención adulta
+const ADULT_AREA_LABELS = {
+  cognicion_juego: 'Funciones cognitivas',
+  avd: 'AVD básicas e instrumentales',
+  motricidad_gruesa: 'Habilidades motoras (equilibrio, coordinación)',
+  motricidad_fina: 'Motricidad fina y praxias',
+  social_conducta: 'Regulación emocional y conducta',
+  sensorial: 'Rutina y actividades significativas'
+};
+// Tipo de atención: se guarda en patients.clinical.population; las fichas antiguas son de niños
+const POPULATION_LABELS = { infantil: 'Niños', adulto: 'Adultos' };
 const PATIENT_STATUS_LABELS = { activo: 'Activo', pausa: 'En pausa', alta: 'Alta' };
 const INSURANCE_LABELS = { fonasa: 'Fonasa', isapre: 'Isapre', particular: 'Particular' };
 const SESSION_KIND_LABELS = { evaluacion: 'Evaluación', intervencion: 'Intervención' };
@@ -65,10 +76,67 @@ const SECTIONS = {
       { key: 'practice_model', label: 'Modelo de práctica', rows: 5 },
       { key: 'reference_models', label: 'Modelos de referencia', rows: 6 }
     ]
+  },
+
+  // ── Secciones de la atención de adultos ──
+  clinicos_adulto: {
+    title: 'Antecedentes clínicos',
+    hint: 'Diagnóstico principal, comorbilidades, síndromes geriátricos, antecedentes de demencia, ayudas técnicas y medicamentos.',
+    fields: [
+      { key: 'main_diagnosis', label: 'Diagnóstico principal', rows: 2, placeholder: 'Ej.: Trastorno neurocognitivo mayor GDS 4' },
+      { key: 'comorbidities', label: 'Comorbilidades', rows: 3, placeholder: 'Ej.: Arritmia cardiaca - Glaucoma ojo izquierdo - Hipoacusia bilateral' },
+      { key: 'geriatric_syndromes', label: 'Síndromes geriátricos', rows: 2, placeholder: 'Ej.: Trastornos sensoriales auditivo y visual' },
+      { key: 'dementia_history', label: 'Antecedentes de demencia', rows: 2, placeholder: 'Diagnóstico, año, quién hace el seguimiento, antecedentes familiares' },
+      { key: 'technical_aids', label: 'Ayudas técnicas', rows: 1, placeholder: 'Ej.: Lentes ópticos - audífono oído izquierdo' },
+      { key: 'medication', label: 'Medicamentos (uno por línea)', rows: 6, placeholder: 'Ej.: Rivastigmina 13.3 mg parche 1-0-0\nMirtazapina 15 mg 0-0-1' },
+      { key: 'other_interventions', label: 'Otras intervenciones', rows: 2, placeholder: 'Ej.: Atención, lenguaje, planificación' }
+    ]
+  },
+  sociofamiliar: {
+    title: 'Contexto sociofamiliar',
+    hint: 'Con quién vive, cuidador principal, red de apoyo y quién solicita la derivación.',
+    fields: [{ key: 'family', label: 'Contexto sociofamiliar', rows: 8 }]
+  },
+  fechas_adulto: {
+    title: 'Fechas y métodos de evaluación',
+    hint: 'Por ejemplo: entrevista junto a familiar, evaluación estandarizada.',
+    fields: [{ key: 'evaluation_dates', label: 'Fechas de evaluación (una por línea)', rows: 3, placeholder: 'Ej.: Febrero 2026: Entrevista junto a familiar\n11 febrero 2026: Evaluación estandarizada' }]
+  },
+  componentes: {
+    title: 'Descripción del estado funcional por componentes',
+    hint: 'Componente cognitivo (MoCA) y componente conductual (NPI-Q), con su impacto en la vida diaria.',
+    fields: [
+      { key: 'comp_cognitive', label: 'A) Componente cognitivo', rows: 10 },
+      { key: 'comp_behavioral', label: 'B) Componente conductual', rows: 8 }
+    ]
+  },
+  avd_adulto: {
+    title: 'Desempeño ocupacional en AVD básicas e instrumentales',
+    hint: 'Resultados del Índice de Barthel y de la escala de Lawton & Brody.',
+    fields: [
+      { key: 'avd_basic', label: 'Actividades básicas de la vida diaria', rows: 8 },
+      { key: 'avd_instrumental', label: 'Actividades instrumentales de la vida diaria', rows: 6 }
+    ]
+  },
+  sintesis_adulto: {
+    title: 'Síntesis diagnóstica',
+    hint: 'Perfil cognitivo, conductual y funcional, habilidades conservadas y factores protectores.',
+    fields: [{ key: 'occ_diagnosis', label: 'Síntesis diagnóstica', rows: 10 }]
+  },
+  sugerencias: {
+    title: 'Se sugiere intervenir en',
+    hint: 'Recomendaciones de intervención para la persona y su cuidador.',
+    fields: [{ key: 'suggestions', label: 'Sugerencias (una por línea)', rows: 6, placeholder: 'Ej.: Estructuración de rutinas matutinas con apoyos visuales' }]
   }
 };
-const FICHA_SECTIONS = ['clinicos', 'familiares'];
-const EVALUATION_SECTIONS = ['metodos', 'observacion', 'ocupacion', 'diagnostico', 'modelos'];
+const FICHA_SECTIONS_BY_POPULATION = {
+  infantil: ['clinicos', 'familiares'],
+  adulto: ['clinicos_adulto', 'sociofamiliar']
+};
+const EVALUATION_SECTIONS_BY_POPULATION = {
+  infantil: ['metodos', 'observacion', 'ocupacion', 'diagnostico', 'modelos'],
+  adulto: ['fechas_adulto', 'componentes', 'avd_adulto', 'sintesis_adulto', 'sugerencias']
+};
 
 // Tabla de puntajes de cada instrumento; las columnas vacías no se muestran
 const SCORE_COLUMNS = [
@@ -76,6 +144,33 @@ const SCORE_COLUMNS = [
   { key: 'raw', label: 'Puntaje bruto' },
   { key: 'score', label: 'Puntaje T' },
   { key: 'interpretation', label: 'Interpretación' }
+];
+const ADULT_SCORE_PRESETS = [
+  {
+    label: 'Barthel',
+    instrument: 'Índice de Barthel',
+    items: ['Puntaje total (/100)']
+  },
+  {
+    label: 'MoCA',
+    instrument: 'Montreal Cognitive Assessment (MoCA)',
+    items: ['Visoespacial / ejecutiva (/5)', 'Identificación (/3)', 'Atención (/6)', 'Lenguaje (/3)', 'Abstracción (/2)', 'Recuerdo diferido (/5)', 'Orientación (/6)', 'Puntaje total (/30)']
+  },
+  {
+    label: 'Lawton & Brody',
+    instrument: 'Escala de Lawton & Brody',
+    items: ['Puntaje total (/8)']
+  },
+  {
+    label: 'NPI-Q',
+    instrument: 'Cuestionario Neuropsiquiátrico (NPI-Q)',
+    items: ['Signos (/12)', 'Gravedad (/36)', 'Estrés del cuidador (/60)']
+  },
+  {
+    label: 'GDS',
+    instrument: 'Escala de Deterioro Global (GDS)',
+    items: ['Estadio']
+  }
 ];
 const SCORE_PRESETS = [
   {
@@ -134,6 +229,7 @@ let unpaidByPatient = {};
 let editingEvaluationId = null;
 let sessions = [];
 let statusFilter = 'activo';
+let populationFilter = 'todos';
 let editingPatientId = null;
 let editingGoalId = null;
 let editingSessionId = null;
@@ -221,6 +317,19 @@ function levelFor(progress) {
   return LEVELS[levelIndex(progress)];
 }
 
+function populationOf(patient) {
+  return ((patient && patient.clinical) || {}).population === 'adulto' ? 'adulto' : 'infantil';
+}
+
+function isAdult(patient = currentPatient) {
+  return populationOf(patient) === 'adulto';
+}
+
+function areaInfo(key, patient = currentPatient) {
+  const area = AREAS[key];
+  return isAdult(patient) ? { ...area, label: ADULT_AREA_LABELS[key] } : area;
+}
+
 function emptyToNull(value) {
   const text = (value ?? '').toString().trim();
   return text === '' ? null : text;
@@ -305,6 +414,7 @@ function renderPatientList() {
   const rutQuery = cleanRut(query);
   const visible = patients.filter((p) =>
     (statusFilter === 'todos' || p.status === statusFilter) &&
+    (populationFilter === 'todos' || populationOf(p) === populationFilter) &&
     (!query || normalize(p.full_name).includes(query) ||
       (rutQuery.length >= 3 && p.rut && cleanRut(p.rut).includes(rutQuery)))
   );
@@ -328,7 +438,7 @@ function renderPatientList() {
       <button type="button" class="pt-patient-item${selected}" data-id="${p.id}">
         <span class="pt-avatar" style="--av:${avatarColor(p.id)}">${escapeHtml(initials(p.full_name))}</span>
         <span>
-          <span class="pt-patient-name">${escapeHtml(p.full_name)}</span>
+          <span class="pt-patient-name">${escapeHtml(p.full_name)} <span class="pt-pop-tag pt-pop-${populationOf(p)}">${POPULATION_LABELS[populationOf(p)]}</span></span>
           <span class="pt-patient-meta">${escapeHtml(meta || PATIENT_STATUS_LABELS[p.status])}</span>
           ${unpaidBadge}
         </span>
@@ -339,10 +449,18 @@ function renderPatientList() {
 
 patientSearch.addEventListener('input', renderPatientList);
 
-document.querySelectorAll('.pt-chip').forEach((chip) => {
+document.querySelectorAll('.pt-chip[data-filter]').forEach((chip) => {
   chip.addEventListener('click', () => {
     statusFilter = chip.dataset.filter;
-    document.querySelectorAll('.pt-chip').forEach((c) => c.classList.toggle('is-active', c === chip));
+    document.querySelectorAll('.pt-chip[data-filter]').forEach((c) => c.classList.toggle('is-active', c === chip));
+    renderPatientList();
+  });
+});
+
+document.querySelectorAll('.pt-chip[data-population]').forEach((chip) => {
+  chip.addEventListener('click', () => {
+    populationFilter = chip.dataset.population;
+    document.querySelectorAll('.pt-chip[data-population]').forEach((c) => c.classList.toggle('is-active', c === chip));
     renderPatientList();
   });
 });
@@ -414,15 +532,17 @@ function renderProfile() {
   status.className = `pt-pill pt-pill-${p.status}`;
   status.textContent = PATIENT_STATUS_LABELS[p.status];
 
+  const adult = isAdult(p);
   const facts = [
+    ['Atención', adult ? 'Adulto' : 'Infantil'],
     ['RUT', p.rut],
     ['Edad', ageLabel(p.birth_date)],
-    ['Colegio', p.school],
-    ['Curso', p.grade],
+    ['Colegio', adult ? '' : p.school],
+    ['Curso', adult ? '' : p.grade],
     ['Previsión', INSURANCE_LABELS[p.health_insurance]],
     ['Diagnóstico', p.diagnosis],
     ['Motivo de consulta', p.consultation_reason],
-    ['Persona responsable', p.guardian_name],
+    [adult ? 'Cuidador principal' : 'Persona responsable', p.guardian_name],
     ['Teléfono', p.guardian_phone],
     ['Comuna', p.comuna],
     ['En terapia desde', formatDate(p.created_at)]
@@ -458,7 +578,7 @@ function processSteps() {
   const c = clinical();
   const hasReport = !!p.final_report_date;
   return [
-    { title: 'Ficha clínica', detail: 'Primera sesión', done: !!(c.diagnoses || c.family || c.milestones), tab: 'ficha' },
+    { title: 'Ficha clínica', detail: 'Primera sesión', done: !!(c.diagnoses || c.family || c.milestones || c.main_diagnosis || c.medication), tab: 'ficha' },
     { title: 'Evaluación', detail: 'Sesiones 1 y 2', done: evaluations.length > 0 || !!c.occ_diagnosis, tab: 'evaluation' },
     {
       title: 'Objetivos y avance',
@@ -521,26 +641,42 @@ function sectionCard(id) {
 function renderSections() {
   const p = currentPatient;
   const c = clinical();
-  const personal = [
-    ['Nombre', p.full_name],
-    ['Sexo', c.sex],
-    ['Edad', ageLabel(p.birth_date)],
-    ['Fecha de nacimiento', p.birth_date ? formatDate(p.birth_date) : ''],
-    ['Escolaridad', schoolingText(p)],
-    ['Persona responsable', p.guardian_name],
-    ['Lateralidad', c.laterality],
-    ['Inscripción en el RND', c.rnd],
-    ['Previsión', INSURANCE_LABELS[p.health_insurance]]
-  ].filter(([, v]) => v);
+  const adult = isAdult(p);
+  const personal = (adult
+    ? [
+      ['Nombre', p.full_name],
+      ['Sexo', c.sex],
+      ['Edad', ageLabel(p.birth_date)],
+      ['Fecha de nacimiento', p.birth_date ? formatDate(p.birth_date) : ''],
+      ['RUT', p.rut],
+      ['Motivo de consulta', p.consultation_reason],
+      ['Cuidador principal', p.guardian_name],
+      ['Previsión', INSURANCE_LABELS[p.health_insurance]]
+    ]
+    : [
+      ['Nombre', p.full_name],
+      ['Sexo', c.sex],
+      ['Edad', ageLabel(p.birth_date)],
+      ['Fecha de nacimiento', p.birth_date ? formatDate(p.birth_date) : ''],
+      ['Escolaridad', schoolingText(p)],
+      ['Persona responsable', p.guardian_name],
+      ['Lateralidad', c.laterality],
+      ['Inscripción en el RND', c.rnd],
+      ['Previsión', INSURANCE_LABELS[p.health_insurance]]
+    ]).filter(([, v]) => v);
+  const population = populationOf(p);
   $('fichaSections').innerHTML = `<section class="pt-section-card">
       <div class="pt-section-head">
-        <h4>Antecedentes personales</h4>
+        <h4>${adult ? 'Antecedentes generales' : 'Antecedentes personales'}</h4>
         <button type="button" class="pt-link-btn" data-edit-patient>Editar</button>
       </div>
       <dl class="pt-profile-facts">${personal.map(([k, v]) => `<div><dt>${k}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>
     </section>
-    ${FICHA_SECTIONS.map(sectionCard).join('')}`;
-  $('evaluationSections').innerHTML = EVALUATION_SECTIONS.map(sectionCard).join('');
+    ${FICHA_SECTIONS_BY_POPULATION[population].map(sectionCard).join('')}`;
+  $('evaluationSections').innerHTML = EVALUATION_SECTIONS_BY_POPULATION[population].map(sectionCard).join('');
+  $('evaluationSummary').textContent = adult
+    ? 'Barthel, MoCA, Lawton & Brody, NPI-Q u otros instrumentos, con sus puntajes.'
+    : 'Se aplican en las sesiones 1 y 2, antes de definir los objetivos.';
 }
 
 function schoolingText(p) {
@@ -628,7 +764,7 @@ function goalGroups() {
 }
 
 function goalCard(g, number) {
-  const area = AREAS[g.area];
+  const area = areaInfo(g.area);
   const done = g.status === 'logrado';
   const last = lastProgressDate(g.id);
   const achieved = done ? achievedDate(g.id) : null;
@@ -755,7 +891,7 @@ function renderProgress() {
 
   charts.innerHTML = goals.map((g) => {
     const rows = goalRows(g.id);
-    const area = AREAS[g.area];
+    const area = areaInfo(g.area);
     const achieved = g.status === 'logrado' ? achievedDate(g.id) : null;
     const history = rows.length ? `<details>
         <summary>Ver historial (${rows.length})</summary>
@@ -919,7 +1055,11 @@ function renderReportDoc() {
   const bullets = (lines) => lines.length ? `<ul>${lines.map((l) => `<li>${text(l)}</li>`).join('')}</ul>` : '';
   const sections = [];
   const add = (title, body) => { if (body.trim()) sections.push({ title, body }); };
+  const adult = isAdult(p);
 
+  if (adult) {
+    addAdultSections(add, { p, c, text, field, bullets });
+  } else {
   add('Antecedentes personales', [
     field('Nombre', p.full_name),
     field('RUT', p.rut),
@@ -980,8 +1120,9 @@ function renderReportDoc() {
     c.practice_model ? `<h4 class="pt-report-sub">Modelo de práctica</h4><p>${text(c.practice_model)}</p>` : '',
     c.reference_models ? `<h4 class="pt-report-sub">Modelos de referencia</h4><p>${text(c.reference_models)}</p>` : ''
   ].join(''));
+  }
 
-  add('Objetivos de intervención', goalGroups().map(({ gg, number, items }) => {
+  add(adult ? 'Objetivos' : 'Objetivos de intervención', goalGroups().map(({ gg, number, items }) => {
     const specific = items.map((g, i) => `
       <li><strong>Objetivo específico ${i + 1}:</strong> ${text(g.title)}</li>
       ${g.description ? `<li><em>Indicador de logro:</em> ${text(g.description)}</li>` : ''}`).join('');
@@ -994,6 +1135,8 @@ function renderReportDoc() {
       ${activities.length ? `<p><strong>Actividades:</strong></p><ul class="pt-report-dash">${activities.map((a) => `<li>${text(a)}</li>`).join('')}</ul>` : ''}
     </div>`;
   }).join(''));
+
+  if (adult) add('Se sugiere intervenir en', bullets(activityList(c.suggestions)));
 
   // Resultados de la intervención: solo cuando ya hubo sesiones o registros de avance
   const ordered = [...sessions].reverse();
@@ -1040,6 +1183,68 @@ function renderReportDoc() {
       <span></span>
       Nayareth Cifuentes Fuchslocher<br>Terapeuta Ocupacional · Registro SIS N° 935279
     </footer>`;
+}
+
+// Informe de adultos: sigue el orden del informe de ingreso en papel
+// (antecedentes generales y clínicos, fechas e instrumentos, contexto sociofamiliar,
+// estado funcional por componentes, AVD y síntesis diagnóstica)
+function addAdultSections(add, { p, c, text, field, bullets }) {
+  add('Antecedentes generales', [
+    field('Nombre', p.full_name),
+    field('Edad', ageLabel(p.birth_date)),
+    field('Fecha de nacimiento', p.birth_date ? formatDate(p.birth_date) : ''),
+    field('RUT', p.rut),
+    field('Sexo', c.sex),
+    field('Cuidador principal', p.guardian_name),
+    field('Previsión', INSURANCE_LABELS[p.health_insurance])
+  ].join(''));
+
+  const medication = activityList(c.medication);
+  add('Antecedentes clínicos', [
+    field('Diagnóstico principal', c.main_diagnosis || p.diagnosis),
+    field('Motivo de consulta', p.consultation_reason),
+    field('Comorbilidades', c.comorbidities),
+    field('Síndromes geriátricos', c.geriatric_syndromes),
+    field('Antecedentes de demencia', c.dementia_history),
+    field('Ayuda técnica', c.technical_aids),
+    medication.length ? `<p><strong>Medicamentos:</strong></p><ul class="pt-report-dash">${medication.map((m) => `<li>${text(m)}</li>`).join('')}</ul>` : '',
+    field('Otras intervenciones', c.other_interventions)
+  ].join(''));
+
+  add('Fechas de evaluación', bullets(activityList(c.evaluation_dates)));
+
+  // Tabla resumen: instrumento y sus puntajes, como en el informe en papel
+  const summary = evaluations.map((ev) => {
+    const scores = (ev.scores || []).map((r) =>
+      [r.item, [r.raw, r.score].filter(Boolean).join(' · '), r.interpretation].filter(Boolean).join(': ')
+    ).filter(Boolean);
+    return `<tr><td>${text(ev.instrument)}</td><td>${scores.map(text).join('<br>') || '—'}</td></tr>`;
+  }).join('');
+  const details = evaluations.filter((ev) => ev.description || ev.results || ev.conclusions).map((ev) => `
+    <h4>${text(ev.instrument)}</h4>
+    ${ev.description ? `<p>${text(ev.description)}</p>` : ''}
+    ${ev.results ? `<p>${text(ev.results)}</p>` : ''}
+    ${ev.conclusions ? `<p>${text(ev.conclusions)}</p>` : ''}`).join('');
+  add('Instrumentos de evaluación', [
+    summary ? `<div class="pt-report-table"><table>
+      <thead><tr><th>Instrumento de evaluación</th><th>Puntajes</th></tr></thead>
+      <tbody>${summary}</tbody></table></div>` : '',
+    details
+  ].join(''));
+
+  add('Contexto sociofamiliar', c.family ? `<p>${text(c.family)}</p>` : '');
+
+  add('Descripción del estado funcional por componentes', [
+    c.comp_cognitive ? `<h4 class="pt-report-sub">A) Componente cognitivo</h4><p>${text(c.comp_cognitive)}</p>` : '',
+    c.comp_behavioral ? `<h4 class="pt-report-sub">B) Componente conductual</h4><p>${text(c.comp_behavioral)}</p>` : ''
+  ].join(''));
+
+  add('Desempeño ocupacional en AVD básicas e instrumentales', [
+    c.avd_basic ? `<h4 class="pt-report-sub">Actividades básicas de la vida diaria</h4><p>${text(c.avd_basic)}</p>` : '',
+    c.avd_instrumental ? `<h4 class="pt-report-sub">Actividades instrumentales de la vida diaria</h4><p>${text(c.avd_instrumental)}</p>` : ''
+  ].join(''));
+
+  add('Síntesis diagnóstica', c.occ_diagnosis ? `<p>${text(c.occ_diagnosis)}</p>` : '');
 }
 
 // La vista previa se actualiza mientras se escribe
@@ -1119,9 +1324,24 @@ function openPatientDialog(patient = null) {
     $('pInsurance').value = patient.health_insurance || '';
     $('pNotes').value = patient.notes || '';
   }
+  // Paciente nuevo: toma el tipo de atención del filtro de la lista si hay uno elegido
+  const population = patient ? populationOf(patient) : (populationFilter === 'adulto' ? 'adulto' : 'infantil');
+  patientForm.querySelector(`input[name="population"][value="${population}"]`).checked = true;
+  updatePopulationFields();
   updateAgeHint();
   $('patientDialog').showModal();
 }
+
+// En adultos se ocultan colegio, curso, lateralidad y RND, y cambian algunos nombres
+function updatePopulationFields() {
+  const adult = patientForm.querySelector('input[name="population"]:checked').value === 'adulto';
+  patientForm.querySelectorAll('.pt-only-child').forEach((el) => { el.hidden = adult; });
+  $('pDiagnosisLabel').textContent = adult ? 'Diagnóstico principal' : 'Diagnóstico';
+  $('pGuardianLabel').textContent = adult ? 'Cuidador principal' : 'Persona responsable';
+  $('pGuardianName').placeholder = adult ? 'Ej.: Orlando, su esposo' : 'Ej.: Ana, su madre';
+}
+
+$('pPopulation').addEventListener('change', updatePopulationFields);
 
 function updateAgeHint() {
   const age = ageLabel($('pBirthDate').value);
@@ -1172,7 +1392,12 @@ patientForm.addEventListener('submit', async (e) => {
     notes: emptyToNull(formData.get('notes')),
     clinical: mergeClinical(
       editingPatientId ? patients.find((p) => p.id === editingPatientId).clinical : {},
-      { sex: formData.get('sex'), laterality: formData.get('laterality'), rnd: formData.get('rnd') }
+      {
+        population: formData.get('population'),
+        sex: formData.get('sex'),
+        laterality: formData.get('laterality'),
+        rnd: formData.get('rnd')
+      }
     )
   };
   const query = editingPatientId
@@ -1190,6 +1415,9 @@ patientForm.addEventListener('submit', async (e) => {
   // Que el paciente guardado quede visible aunque su estado no coincida con el filtro
   if (statusFilter !== 'todos' && statusFilter !== data.status) {
     document.querySelector(`.pt-chip[data-filter="${data.status}"]`).click();
+  }
+  if (populationFilter !== 'todos' && populationFilter !== populationOf(data)) {
+    document.querySelector('.pt-chip[data-population="todos"]').click();
   }
   await selectPatient(data.id);
   await loadStats();
@@ -1213,12 +1441,16 @@ $('deletePatientBtn').addEventListener('click', async () => {
 
 // ── Ventana: objetivo ──────────────────────────────────────────────────
 const goalForm = $('goalForm');
-$('gArea').innerHTML = Object.entries(AREAS).map(([value, area]) =>
-  `<option value="${value}">${area.label}</option>`
-).join('');
+// Las opciones de área cambian según si la atención es infantil o de adultos
+function fillAreaOptions() {
+  $('gArea').innerHTML = Object.keys(AREAS).map((value) =>
+    `<option value="${value}">${areaInfo(value).label}</option>`
+  ).join('');
+}
 
 function openGoalDialog(goal = null, generalGoalId = null) {
   editingGoalId = goal ? goal.id : null;
+  fillAreaOptions();
   goalForm.reset();
   $('goalFormNote').textContent = '';
   $('goalDialogTitle').textContent = goal ? 'Editar objetivo específico' : 'Nuevo objetivo específico';
@@ -1286,7 +1518,7 @@ function openProgressDialog(goal) {
   $('progressGoalTitle').textContent = goal.title;
   $(`prLevel${levelIndex(goal.progress)}`).checked = true;
   $('prDate').value = todayIso();
-  $('progressDialog').style.setProperty('--area', AREAS[goal.area].color);
+  $('progressDialog').style.setProperty('--area', areaInfo(goal.area).color);
   $('progressDialog').showModal();
 }
 
@@ -1384,12 +1616,20 @@ function readScoreRows() {
   }).filter((row) => Object.keys(row).length);
 }
 
-$('scorePresets').innerHTML = '<span class="pt-quick-label">Rellenar con:</span>' +
-  SCORE_PRESETS.map((preset, i) => `<button type="button" data-preset="${i}">${preset.label}</button>`).join('');
+function scorePresets() {
+  return isAdult() ? ADULT_SCORE_PRESETS : SCORE_PRESETS;
+}
+
+function renderScorePresets() {
+  $('scorePresets').innerHTML = '<span class="pt-quick-label">Rellenar con:</span>' +
+    scorePresets().map((preset, i) => `<button type="button" data-preset="${i}">${preset.label}</button>`).join('');
+  $('eInstrument').placeholder = isAdult() ? 'Ej.: Índice de Barthel' : 'Ej.: Sensory Processing Measure (SPM) Hogar';
+}
+
 $('scorePresets').addEventListener('click', (e) => {
   const btn = e.target.closest('[data-preset]');
   if (!btn) return;
-  const preset = SCORE_PRESETS[Number(btn.dataset.preset)];
+  const preset = scorePresets()[Number(btn.dataset.preset)];
   if (!$('eInstrument').value.trim()) $('eInstrument').value = preset.instrument;
   // Mantiene lo ya escrito y agrega las filas del instrumento que falten
   const current = readScoreRows();
@@ -1405,6 +1645,7 @@ scoreRows.addEventListener('click', (e) => {
 function openEvaluationDialog(evaluation = null) {
   editingEvaluationId = evaluation ? evaluation.id : null;
   evaluationForm.reset();
+  renderScorePresets();
   $('evaluationFormNote').textContent = '';
   $('evaluationDialogTitle').textContent = evaluation ? 'Editar instrumento' : 'Registrar instrumento';
   $('deleteEvaluationBtn').hidden = !evaluation;
@@ -1512,7 +1753,7 @@ function openSectionDialog(id) {
   $('sectionFormNote').textContent = '';
   $('sectionFields').innerHTML = section.fields.map((f) => `
     <label for="sec-${f.key}">${f.label}
-      <textarea id="sec-${f.key}" name="${f.key}" rows="${f.rows}" maxlength="6000">${escapeHtml(c[f.key] || '')}</textarea>
+      <textarea id="sec-${f.key}" name="${f.key}" rows="${f.rows}" maxlength="6000"${f.placeholder ? ` placeholder="${escapeHtml(f.placeholder)}"` : ''}>${escapeHtml(c[f.key] || '')}</textarea>
     </label>`).join('');
   $('sectionDialog').showModal();
 }
